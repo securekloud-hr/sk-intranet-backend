@@ -6,6 +6,7 @@ require("dotenv").config();
 async function importExcel() {
   try {
     // Connect to MongoDB
+    // testu
     await mongoose.connect(process.env.MONGODB_URL);
     console.log("✅ MongoDB Connected");
 
