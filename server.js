@@ -88,10 +88,10 @@ const gmailTransporter = nodemailer.createTransport({
   },
 });
 
-// ---------- Existing Gmail endpoints ----------
+// ---------- Gmail endpoints (HR / IT / Payroll via type) ----------
 app.post("/api/sendEmail", async (req, res) => {
   try {
-    const { name, email, message } = req.body || {};
+    const { name, email, message, type } = req.body || {};
 
     if (!name || !email || !message) {
       return res
@@ -99,8 +99,21 @@ app.post("/api/sendEmail", async (req, res) => {
         .json({ success: false, error: "Missing fields" });
     }
 
+    // Save query in DB
     const newQuery = new Query({ name, email, message });
     await newQuery.save();
+
+    // Decide which team to send to
+    // default HR
+    let toAddress = process.env.HR_EMAIL || process.env.DEFAULT_RECIPIENT;
+
+    if (type === "ticket") {
+      // IT Support
+      toAddress = process.env.IT_EMAIL || process.env.DEFAULT_RECIPIENT;
+    } else if (type === "payroll") {
+      // Finance / Payroll
+      toAddress = process.env.FINANCE_EMAIL || process.env.DEFAULT_RECIPIENT;
+    }
 
     const html = `
       <h2>Query from ${name}</h2>
@@ -110,7 +123,8 @@ app.post("/api/sendEmail", async (req, res) => {
 
     const result = await gmailTransporter.sendMail({
       from: `"SecureKloud Support" <${process.env.EMAIL_USER}>`,
-      to: process.env.HR_EMAIL || process.env.DEFAULT_RECIPIENT,
+      to: toAddress,   // HR / IT / Finance
+      cc: email,       // copy to the user
       subject: `Query from ${name}`,
       html,
     });
@@ -122,6 +136,7 @@ app.post("/api/sendEmail", async (req, res) => {
   }
 });
 
+// (Old direct IT ticket endpoint – you can keep if used elsewhere)
 app.post("/api/sendTicket", async (req, res) => {
   try {
     const { name, email, message } = req.body || {};
