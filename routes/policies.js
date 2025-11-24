@@ -82,9 +82,7 @@ router.get("/", (req, res) => {
 
         const files = fs
           .readdirSync(policyPath)
-          .filter((f) =>
-            fs.statSync(path.join(policyPath, f)).isFile()
-          );
+          .filter((f) => fs.statSync(path.join(policyPath, f)).isFile());
 
         if (!files.length) return;
 
@@ -210,6 +208,60 @@ router.delete("/:category/:policyName", (req, res) => {
       message: "Failed to delete policy",
       error: err.message,
     });
+  }
+});
+
+/* ----------------------------------------------------------
+   DOWNLOAD LATEST FILE FOR A POLICY
+   GET /api/policies/download/:category/:policyName
+----------------------------------------------------------- */
+router.get("/download/:category/:policyName", (req, res) => {
+  try {
+    const { category, policyName } = req.params;
+
+    // Folder path: ../public/policies/<CATEGORY>/<POLICY NAME>/
+    const policyFolder = path.join(POLICIES_DIR, category, policyName);
+
+    if (!fs.existsSync(policyFolder)) {
+      return res.status(404).json({ message: "Policy folder not found" });
+    }
+
+    // Fetch all files inside this policy folder
+    const files = fs
+      .readdirSync(policyFolder)
+      .filter((f) => fs.statSync(path.join(policyFolder, f)).isFile());
+
+    if (!files.length) {
+      return res.status(404).json({ message: "No files found for this policy" });
+    }
+
+    // Get the latest modified file
+    let latest = files[0];
+    let latestTime = fs.statSync(path.join(policyFolder, latest)).mtimeMs;
+
+    files.forEach((file) => {
+      const full = path.join(policyFolder, file);
+      const t = fs.statSync(full).mtimeMs;
+      if (t > latestTime) {
+        latest = file;
+        latestTime = t;
+      }
+    });
+
+    const fullPath = path.join(policyFolder, latest);
+
+    // Force download
+    return res.download(fullPath, latest, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Failed to download file" });
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Download route error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 });
 

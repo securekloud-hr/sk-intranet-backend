@@ -6,7 +6,9 @@ const router = express.Router();
 
 // API endpoint to list past event folders + images
 router.get("/", (req, res) => {
-  const basePath = path.join(__dirname, "../../public/past-events");
+
+  // 🔥 Correct location: backend-root/public/past-events
+  const basePath = path.join(process.cwd(), "public", "past-events");
 
   if (!fs.existsSync(basePath)) {
     return res.json([]);
