@@ -100,7 +100,7 @@ const gmailTransporter = nodemailer.createTransport({
 // ---------- Gmail endpoints (HR / IT / Payroll via type) ----------
 app.post("/api/sendEmail", async (req, res) => {
   try {
-    const { name, email, message, type } = req.body || {};
+    const { name, email, subject, message, type } = req.body || {};
 
     if (!name || !email || !message) {
       return res
@@ -113,28 +113,32 @@ app.post("/api/sendEmail", async (req, res) => {
     await newQuery.save();
 
     // Decide which team to send to
-    // default HR
     let toAddress = process.env.HR_EMAIL || process.env.DEFAULT_RECIPIENT;
 
     if (type === "ticket") {
-      // IT Support
       toAddress = process.env.IT_EMAIL || process.env.DEFAULT_RECIPIENT;
     } else if (type === "payroll") {
-      // Finance / Payroll
       toAddress = process.env.FINANCE_EMAIL || process.env.DEFAULT_RECIPIENT;
     }
 
+    // ⭐ NEW: subject handling
+    const finalSubject =
+      subject && subject.trim().length > 0
+        ? subject
+        : `Query from ${name}`;
+
     const html = `
-      <h2>Query from ${name}</h2>
+      <h2>${finalSubject}</h2>
+      <p><strong>From:</strong> ${name}</p>
       <p><strong>Email:</strong> ${email}</p>
       <p><strong>Message:</strong><br>${message}</p>
     `;
 
     const result = await gmailTransporter.sendMail({
       from: `"SecureKloud Support" <${process.env.EMAIL_USER}>`,
-      to: toAddress,   // HR / IT / Finance
-      cc: email,       // copy to the user
-      subject: `Query from ${name}`,
+      to: toAddress,
+      cc: email,
+      subject: finalSubject,   // ⭐ uses user-entered subject
       html,
     });
 
