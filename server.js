@@ -35,6 +35,11 @@ const authRoutes = require("./routes/authRoutes");
 const questionsRoutes = require("./routes/questions");
 const aadAuthRoutes = require("./routes/aadAuthRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
+const internalJobsRoutes = require("./routes/internalJobs");
+const jobApplyRoutes = require("./routes/jobApplyRoutes");
+
+
+
 
 const app = express();
 
@@ -80,6 +85,8 @@ const querySchema = new mongoose.Schema({
 const Query = mongoose.model("Query", querySchema);
 
 // ---------- Gmail transporter ----------
+// ---------- Outlook / Office 365 transporter ----------
+// ---------- Gmail transporter ----------
 const gmailTransporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -87,6 +94,8 @@ const gmailTransporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+
 
 // ---------- Gmail endpoints (HR / IT / Payroll via type) ----------
 app.post("/api/sendEmail", async (req, res) => {
@@ -324,6 +333,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/questions", questionsRoutes);
 app.use("/api/aad", aadAuthRoutes);
 app.use("/api/holidays", holidayRoutes);
+app.use("/api/internal-jobs", internalJobsRoutes);
+app.use("/api/jobs", jobApplyRoutes);
 
 // ---------- Start server ----------
 const PORT = process.env.PORT || 8000;

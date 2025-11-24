@@ -1,80 +1,126 @@
+// F:\Securekloud Intranet\sk-intranet-backend\api\referral.js
+
 const express = require("express");
 const nodemailer = require("nodemailer");
-const mongoose = require("mongoose");
 const multer = require("multer");
 require("dotenv").config();
 
+console.log("✅ referral.js loaded (NO mongoose, v2)");
+
 const router = express.Router();
 
-// Referral Schema
-const referralSchema = new mongoose.Schema({
-  candidateName: String,
-  email: String,
-  phone: String,
-  position: String,
-  notes: String,
-  resume: String,
-  createdAt: { type: Date, default: Date.now },
-});
+// --- Multer: store resume in memory for attachments ---
+const upload = multer({ storage: multer.memoryStorage() });
 
-const Referral = mongoose.model("Referral", referralSchema);
-
-// Multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/referrals"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+// --- Gmail transporter (same as HR / IT mail setup) ---
+const mailTransporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER, // your Gmail
+    pass: process.env.EMAIL_PASS, // app password
+  },
 });
-const upload = multer({ storage });
 
 // POST /api/referral
 router.post("/", upload.single("resume"), async (req, res) => {
   try {
-    const { candidateName, email, phone, position, notes } = req.body;
+    console.log("📥 /api/referral body:", req.body);
+    console.log("📎 /api/referral file:", req.file && req.file.originalname);
 
-    if (!candidateName || !email || !phone || !position) {
-      return res.status(400).json({ success: false, error: "Missing required fields" });
-    }
-
-    // Save in DB
-    const referral = new Referral({
+    const {
       candidateName,
-      email,
+      candidateEmail,
+      email, // in case frontend sends `email` instead of `candidateEmail`
       phone,
       position,
       notes,
-      resume: req.file ? req.file.path : null,
-    });
-    await referral.save();
+      referrerName,
+      referrerEmail,
+    } = req.body || {};
 
-    // Send email
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-    });
+    // support both candidateEmail and email
+    const finalCandidateEmail = candidateEmail || email;
 
+    // 🔒 Basic validation
+    if (!candidateName || !finalCandidateEmail || !phone || !position) {
+      console.error("❌ Missing candidate details", {
+        candidateName,
+        finalCandidateEmail,
+        phone,
+        position,
+      });
+      return res
+        .status(400)
+        .json({ success: false, error: "Missing candidate details" });
+    }
+
+    if (!referrerName || !referrerEmail) {
+      console.error("❌ Missing referrer details", {
+        referrerName,
+        referrerEmail,
+      });
+      return res
+        .status(400)
+        .json({ success: false, error: "Missing referrer details" });
+    }
+
+    // 💌 Email HTML
     const html = `
-      <h2>New Referral Submission</h2>
+      <h2>New Employee Referral</h2>
+
+      <h3>Referred By</h3>
+      <p><strong>Name:</strong> ${referrerName}</p>
+      <p><strong>Email:</strong> ${referrerEmail}</p>
+
+      <h3>Candidate Details</h3>
       <p><strong>Name:</strong> ${candidateName}</p>
-      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Email:</strong> ${finalCandidateEmail}</p>
       <p><strong>Phone:</strong> ${phone}</p>
-      <p><strong>Position:</strong> ${position}</p>
-      <p><strong>Notes:</strong> ${notes || "N/A"}</p>
+      <p><strong>Position Referred For:</strong> ${position}</p>
+
+      <h3>Additional Notes</h3>
+      <p>${notes && notes.trim ? notes.trim() : notes || "N/A"}</p>
+
+      ${
+        req.file
+          ? `<p><em>Resume attached: ${req.file.originalname}</em></p>`
+          : "<p><em>No resume attached.</em></p>"
+      }
     `;
 
-    await transporter.sendMail({
-      from: `"Referral System" <${process.env.EMAIL_USER}>`,
-      to: process.env.TA_EMAIL, // add in .env
-      subject: `New Referral: ${candidateName}`,
+    const mailOptions = {
+      from: `"SecureKloud Referrals" <${process.env.EMAIL_USER}>`,
+      to: process.env.TA_EMAIL || process.env.DEFAULT_RECIPIENT, // TA team
+      cc: referrerEmail, // ✅ copy to the employee
+      subject: `Referral – ${candidateName} for ${position}`,
       html,
       attachments: req.file
-        ? [{ filename: req.file.originalname, path: req.file.path }]
+        ? [
+            {
+              filename: req.file.originalname,
+              content: req.file.buffer,
+            },
+          ]
         : [],
+    };
+
+    console.log("📤 Sending referral mail:", {
+      to: mailOptions.to,
+      cc: mailOptions.cc,
+      subject: mailOptions.subject,
     });
 
-    res.json({ success: true, message: "Referral submitted successfully" });
+    const result = await mailTransporter.sendMail(mailOptions);
+
+    return res.json({
+      success: true,
+      messageId: result.messageId,
+    });
   } catch (err) {
-    console.error("❌ Referral Error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("❌ Referral Email Error:", err);
+    return res
+      .status(500)
+      .json({ success: false, error: err.message || "Internal error" });
   }
 });
 
