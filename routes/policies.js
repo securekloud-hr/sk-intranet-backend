@@ -6,11 +6,32 @@ const path = require("path");
 
 // Base folder
 const POLICIES_DIR = path.join(__dirname, "../public/policies");
+const ORDER_FILE = path.join(POLICIES_DIR, "categoryOrder.json");
 
 // Ensure root folder exists
 if (!fs.existsSync(POLICIES_DIR)) {
   fs.mkdirSync(POLICIES_DIR, { recursive: true });
 }
+
+/* ----------------------------------------------------------
+   SAVE CATEGORY ORDER (called from frontend drag & drop)
+   POST /api/policies/reorder
+----------------------------------------------------------- */
+router.post("/reorder", (req, res) => {
+  const { order } = req.body; // ["Admin Policies", "HR Policies", ...]
+
+  if (!order || !Array.isArray(order)) {
+    return res.status(400).json({ message: "Invalid order format" });
+  }
+
+  try {
+    fs.writeFileSync(ORDER_FILE, JSON.stringify(order, null, 2));
+    return res.json({ success: true, message: "Category order saved" });
+  } catch (err) {
+    console.error("Error saving category order:", err);
+    return res.status(500).json({ message: "Failed to save order" });
+  }
+});
 
 /* ----------------------------------------------------------
    MULTER STORAGE
@@ -41,16 +62,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* ----------------------------------------------------------
-   GET ALL POLICIES
+   GET ALL POLICIES  (now respects saved category order)
    RETURNS:
    {
-     "Admin Policies": [
-       {
-         name: "Domestic Travel Policy & Process",
-         fileUrl: "/policies/Admin Policies/Domestic Travel Policy & Process/<latest>.pdf",
-         updated: "2025-11-20"
-       }
-     ]
+     "Admin Policies": [ ... ],
+     "HR Policies": [ ... ],
+     ...
    }
 ----------------------------------------------------------- */
 router.get("/", (req, res) => {
@@ -61,11 +78,34 @@ router.get("/", (req, res) => {
       return res.json(categories);
     }
 
-    const categoryFolders = fs.readdirSync(POLICIES_DIR);
+    // 1) Load saved order if file exists
+    let savedOrder = [];
+    if (fs.existsSync(ORDER_FILE)) {
+      try {
+        const raw = fs.readFileSync(ORDER_FILE, "utf8");
+        savedOrder = JSON.parse(raw);
+      } catch (e) {
+        console.error("Error reading categoryOrder.json:", e);
+      }
+    }
 
-    categoryFolders.forEach((category) => {
+    // 2) Get actual folders from disk
+    const categoryFolders = fs
+      .readdirSync(POLICIES_DIR)
+      .filter((cat) =>
+        fs.statSync(path.join(POLICIES_DIR, cat)).isDirectory()
+      );
+
+    // 3) Final order = savedOrder + any new categories added later
+    const finalOrder = [
+      ...savedOrder,
+      ...categoryFolders.filter((c) => !savedOrder.includes(c)),
+    ];
+
+    finalOrder.forEach((category) => {
       const categoryPath = path.join(POLICIES_DIR, category);
 
+      if (!fs.existsSync(categoryPath)) return;
       if (!fs.statSync(categoryPath).isDirectory()) return;
 
       const items = fs.readdirSync(categoryPath);
@@ -88,9 +128,7 @@ router.get("/", (req, res) => {
 
         // determine latest file by modified date
         let latest = files[0];
-        let latestTime = fs.statSync(
-          path.join(policyPath, latest)
-        ).mtimeMs;
+        let latestTime = fs.statSync(path.join(policyPath, latest)).mtimeMs;
 
         files.forEach((file) => {
           const full = path.join(policyPath, file);
@@ -219,14 +257,12 @@ router.get("/download/:category/:policyName", (req, res) => {
   try {
     const { category, policyName } = req.params;
 
-    // Folder path: ../public/policies/<CATEGORY>/<POLICY NAME>/
     const policyFolder = path.join(POLICIES_DIR, category, policyName);
 
     if (!fs.existsSync(policyFolder)) {
       return res.status(404).json({ message: "Policy folder not found" });
     }
 
-    // Fetch all files inside this policy folder
     const files = fs
       .readdirSync(policyFolder)
       .filter((f) => fs.statSync(path.join(policyFolder, f)).isFile());
@@ -250,7 +286,6 @@ router.get("/download/:category/:policyName", (req, res) => {
 
     const fullPath = path.join(policyFolder, latest);
 
-    // Force download
     return res.download(fullPath, latest, (err) => {
       if (err) {
         console.error("Download error:", err);
