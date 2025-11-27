@@ -329,7 +329,7 @@ app.use("/api/jobs", jobsRoutes);
 app.use("/api/referral", referralRoutes);
 app.use("/api/nomination", nominationRoutes);
 app.use("/api/past-events", pastEventsRoutes);
-app.use("/api/employee-directory", employeeDirectoryRoutes);
+
 app.use("/api/employeedirectory", employeeDirectoryRoutes);
 
 app.use("/api/policies", policiesRoutes);
