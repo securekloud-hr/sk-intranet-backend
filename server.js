@@ -310,8 +310,9 @@ app.use(
 );
 app.use(
   "/past-events",
-  express.static(path.resolve(__dirname, "../public/past-events"))
+  express.static(path.join(__dirname, "public/past-events"))
 );
+
 console.log(
   "🗂 Serving static PDFs from:",
   path.resolve(__dirname, "../public/policies")
@@ -331,6 +332,7 @@ app.use("/api/nomination", nominationRoutes);
 app.use("/api/past-events", pastEventsRoutes);
 
 app.use("/api/employeedirectory", employeeDirectoryRoutes);
+app.use("/api/employee-directory", employeeDirectoryRoutes);
 
 app.use("/api/policies", policiesRoutes);
 app.use("/api/admin", adminRoutes);
