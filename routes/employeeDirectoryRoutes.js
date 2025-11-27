@@ -10,49 +10,40 @@ const Employee = require("../models/EmployeeDirectory");
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// ✅ Normalize Excel headers (handles spaces, dots, hidden chars, casing)
+// =============================
+// Normalize Excel keys
+// =============================
 const normalizeKey = (key) =>
   key
     .toString()
     .trim()
     .toLowerCase()
-    .replace(/\u00A0/g, " ") // remove invisible non-breaking spaces
+    .replace(/\u00A0/g, " ")
     .replace(/\./g, "")
     .replace(/\s+/g, " ");
 
 // =============================
-// 📤 Upload & process Excel file
+// 📤 Excel Upload → MongoDB
 // =============================
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, error: "No file uploaded" });
-    }
+    if (!req.file)
+      return res.status(400).json({ success: false, error: "No file uploaded" });
 
-    // Read Excel workbook
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-
-    // Find sheet with name "Emp Directory"
     const sheetName = workbook.SheetNames.find((name) =>
       name.toLowerCase().includes("emp directory")
     );
-    if (!sheetName) {
+
+    if (!sheetName)
       return res.status(400).json({
         success: false,
         error: "Employee Directory sheet not found in Excel file",
       });
-    }
 
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet);
 
-    if (rows.length > 0) {
-      console.log("✅ Excel headers found:", Object.keys(rows[0]));
-    }
-
-    // Map Excel rows → MongoDB schema
     const data = rows.map((row) => {
       const keys = Object.keys(row).reduce((acc, k) => {
         acc[normalizeKey(k)] = row[k];
@@ -77,10 +68,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       };
     });
 
-    // Clear previous collection (optional)
     await Employee.deleteMany({});
-
-    // Insert new employees
     await Employee.insertMany(data);
 
     res.json({
@@ -95,36 +83,29 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 // =============================
-// 📥 Fetch all employees (with role-based filtering)
+// 📥 Fetch ALL employees
 // =============================
 router.get("/", async (req, res) => {
   try {
-    // Get user role from auth or from header; normalize to lowercase
     let role = req.user?.role || req.headers["x-user-role"] || "user";
-    if (typeof role === "string") {
-      role = role.toLowerCase();
-    }
+    if (typeof role === "string") role = role.toLowerCase();
     const isAdmin = role === "admin";
 
     const employees = await Employee.find().sort({ EmployeeName: 1 }).lean();
 
-    const sanitized = employees.map((emp) => {
-      if (isAdmin) {
-        // 🔓 Admin: return full document
-        return emp;
-      }
-
-      // 🔒 Normal user: return ONLY allowed fields
-      return {
-        EmpID: emp.EmpID || "",
-        EmployeeName: emp.EmployeeName || "",
-        Department: emp.Department || "",
-        Email: emp.Email || "",
-        Tech1: emp.Tech1 || "",
-        Tech2: emp.Tech2 || "",
-        SpecialSkill: emp.SpecialSkill || "",
-      };
-    });
+    const sanitized = employees.map((emp) =>
+      isAdmin
+        ? emp
+        : {
+            EmpID: emp.EmpID || "",
+            EmployeeName: emp.EmployeeName || "",
+            Department: emp.Department || "",
+            Email: emp.Email || "",
+            Tech1: emp.Tech1 || "",
+            Tech2: emp.Tech2 || "",
+            SpecialSkill: emp.SpecialSkill || "",
+          }
+    );
 
     res.json(sanitized);
   } catch (err) {
@@ -133,5 +114,146 @@ router.get("/", async (req, res) => {
   }
 });
 
+// =======================================================================
+// 🔥 CONNECTS LearningDevelopment ↔ EmployeeDirectory Database
+// =======================================================================
+
+const splitList = (val = "") =>
+  val
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+const joinList = (arr) => (Array.isArray(arr) ? arr.join(", ") : "");
+
+// --------- EXISTING EMAIL ROUTES (KEEP) ---------
+router.get("/by-email/:email", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email || "").toLowerCase();
+
+    const employee = await Employee.findOne({
+      Email: { $regex: new RegExp(`^${email}$`, "i") },
+    }).lean();
+
+    if (!employee)
+      return res.json({ success: false, message: "User not found" });
+
+    res.json({
+      success: true,
+      employee: {
+        id: employee._id,
+        EmpID: employee.EmpID,
+        name: employee.EmployeeName,
+        email: employee.Email,
+        department: employee.Department,
+        primarySkills: splitList(employee.Tech1),
+        secondarySkills: splitList(employee.Tech2),
+        certifications: splitList(employee.SpecialSkill),
+      },
+    });
+  } catch (err) {
+    console.error("❌ /by-email error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put("/by-email/:email", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email || "").toLowerCase();
+    const { primarySkills, secondarySkills, certifications } = req.body;
+
+    const employee = await Employee.findOne({
+      Email: { $regex: new RegExp(`^${email}$`, "i") },
+    });
+
+    if (!employee)
+      return res.json({ success: false, message: "Employee not found" });
+
+    employee.Tech1 = joinList(primarySkills);
+    employee.Tech2 = joinList(secondarySkills);
+    employee.SpecialSkill = joinList(certifications);
+
+    await employee.save();
+
+    res.json({ success: true, message: "Updated Successfully" });
+  } catch (err) {
+    console.error("❌ PUT /by-email error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --------- NEW NAME ROUTES (THIS IS WHAT L&D USES) ---------
+router.get("/by-name/:name", async (req, res) => {
+  try {
+    let name = decodeURIComponent(req.params.name || "").trim();
+    // collapse multiple spaces: "Chinnam  Mukund" → "Chinnam Mukund"
+    name = name.replace(/\s+/g, " ").toLowerCase();
+
+    if (!name) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Name is required" });
+    }
+
+    const employee = await Employee.findOne({
+      EmployeeName: { $regex: new RegExp(`^${name}$`, "i") },
+    }).lean();
+
+    if (!employee) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      employee: {
+        id: employee._id,
+        EmpID: employee.EmpID,
+        name: employee.EmployeeName,
+        email: employee.Email,
+        department: employee.Department,
+        primarySkills: splitList(employee.Tech1),
+        secondarySkills: splitList(employee.Tech2),
+        certifications: splitList(employee.SpecialSkill),
+      },
+    });
+  } catch (err) {
+    console.error("❌ /by-name error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put("/by-name/:name", async (req, res) => {
+  try {
+    let name = decodeURIComponent(req.params.name || "").trim();
+    name = name.replace(/\s+/g, " ").toLowerCase();
+
+    const { primarySkills, secondarySkills, certifications } = req.body;
+
+    if (!name) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Name is required" });
+    }
+
+    const employee = await Employee.findOne({
+      EmployeeName: { $regex: new RegExp(`^${name}$`, "i") },
+    });
+
+    if (!employee) {
+      return res.json({ success: false, message: "Employee not found" });
+    }
+
+    employee.Tech1 = joinList(primarySkills);
+    employee.Tech2 = joinList(secondarySkills);
+    employee.SpecialSkill = joinList(certifications);
+
+    await employee.save();
+
+    res.json({ success: true, message: "Updated Successfully" });
+  } catch (err) {
+    console.error("❌ PUT /by-name error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;
