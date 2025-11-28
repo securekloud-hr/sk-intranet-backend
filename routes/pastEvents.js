@@ -1,24 +1,19 @@
-// F:\Securekloud Intranet\sk-intranet-backend\routes\pastEvents.js
-
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
 
 const router = express.Router();
 
-/**
- * Absolute path to your FRONTEND public/past-events folder.
- * ❗ Adjust ONLY this root if you move the project.
- */
-const basePath = "F:\\Securekloud Intranet\\sk-intranet-frontend\\public\\past-events";
+// 👇 On EC2 this will be /home/ubuntu/sk-intranet-frontend/public/past-events
+//    On your laptop it will fall back to your F: path (if you keep it).
+const basePath =
+  process.env.PAST_EVENTS_DIR ||
+  "F:\\\\Securekloud Intranet\\\\sk-intranet-frontend\\\\public\\\\past-events";
 
-/**
- * GET /api/past-events
- * Returns all event folders + image URLs usable directly in <img src="...">
- */
 router.get("/", (req, res) => {
   try {
     if (!fs.existsSync(basePath)) {
+      console.error("❌ PAST_EVENTS_DIR not found:", basePath);
       return res.json([]);
     }
 
@@ -27,8 +22,6 @@ router.get("/", (req, res) => {
     const events = folders
       .map((folder) => {
         const folderPath = path.join(basePath, folder);
-
-        // skip non-folders
         if (!fs.lstatSync(folderPath).isDirectory()) return null;
 
         const files = fs
@@ -37,16 +30,16 @@ router.get("/", (req, res) => {
             [".jpg", ".jpeg", ".png"].includes(path.extname(f).toLowerCase())
           );
 
-        // build URLs like /past-events/2025 mensday/1.jpg
         const images = files.map((f) => {
           const encodedFolder = encodeURIComponent(folder);
           const encodedFile = encodeURIComponent(f);
+          // URL used directly in <img src="...">
           return `/past-events/${encodedFolder}/${encodedFile}`;
         });
 
         return {
-          id: folder, // used in <select value>
-          title: folder, // show folder name as event title
+          id: folder,
+          title: folder,
           folder: `past-events/${folder}`,
           imageCount: files.length,
           images,
