@@ -61,7 +61,29 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         Aadhar: keys["aadhar"] || "",
         BloodGroup: keys["blood group"] || "",
         EmergencyContact: keys["emergency contact no"] || "",
-        Email: keys["personal email id"] || "",
+
+        // ✅ Excel column "Designation" → normalized as "designation"
+        Designation: keys["designation"] || "",
+
+        // ✅ Official / Work email: from "E Mail" column etc.
+        OfficialEmail:
+          keys["e mail"] ||       // "E Mail"
+          keys["e-mail id"] ||    // if header changes in future
+          keys["email id"] ||     // generic variants
+          keys["email"] ||        // very generic
+          "",
+
+        // ✅ Personal email from "Personal email ID"
+        PersonalEmailID: keys["personal email id"] || "",
+
+        // ✅ Combined generic Email (for /by-email and older code)
+        Email:
+          keys["e mail"] ||
+          keys["personal email id"] ||
+          keys["email id"] ||
+          keys["email"] ||
+          "",
+
         Tech1: keys["tech 1"] || keys["tech1"] || keys["tech. 1"] || "",
         Tech2: keys["tech 2"] || keys["tech2"] || keys["tech. 2"] || "",
         SpecialSkill: keys["special skill"] || "",
@@ -100,6 +122,9 @@ router.get("/", async (req, res) => {
             EmpID: emp.EmpID || "",
             EmployeeName: emp.EmployeeName || "",
             Department: emp.Department || "",
+            Designation: emp.Designation || "",
+            OfficialEmail: emp.OfficialEmail || "",
+            PersonalEmailID: emp.PersonalEmailID || "",
             Email: emp.Email || "",
             Tech1: emp.Tech1 || "",
             Tech2: emp.Tech2 || "",
