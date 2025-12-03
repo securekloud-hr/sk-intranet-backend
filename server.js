@@ -37,6 +37,8 @@ const aadAuthRoutes = require("./routes/aadAuthRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const internalJobsRoutes = require("./routes/internalJobs");
 const jobApplyRoutes = require("./routes/jobApplyRoutes");
+const profileRoutes = require("./routes/profileRoutes");
+
 
 
 
@@ -343,6 +345,8 @@ app.use("/api/aad", aadAuthRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/internal-jobs", internalJobsRoutes);
 app.use("/api/jobs", jobApplyRoutes);
+app.use("/api/profile", profileRoutes);
+
 app.use("/past-events", express.static("/home/ubuntu/sk-intranet-frontend/public/past-events"));
 
 
