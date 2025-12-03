@@ -43,6 +43,9 @@ const profileRoutes = require("./routes/profileRoutes");
 
 
 
+
+
+
 const app = express();
 
 // ---------- Core middleware ----------
@@ -346,6 +349,7 @@ app.use("/api/holidays", holidayRoutes);
 app.use("/api/internal-jobs", internalJobsRoutes);
 app.use("/api/jobs", jobApplyRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/learning", learningRoutes);
 
 app.use("/past-events", express.static("/home/ubuntu/sk-intranet-frontend/public/past-events"));
 
