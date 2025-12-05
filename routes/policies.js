@@ -69,6 +69,9 @@ const upload = multer({ storage });
      "HR Policies": [ ... ],
      ...
    }
+
+   Each policy object now also includes:
+   - description: content of Desc.txt if present
 ----------------------------------------------------------- */
 router.get("/", (req, res) => {
   try {
@@ -120,17 +123,40 @@ router.get("/", (req, res) => {
       policyFolders.forEach((policyName) => {
         const policyPath = path.join(categoryPath, policyName);
 
-        const files = fs
+        const allFiles = fs
           .readdirSync(policyPath)
           .filter((f) => fs.statSync(path.join(policyPath, f)).isFile());
 
-        if (!files.length) return;
+        if (!allFiles.length) return;
+
+        // 🔹 Read Desc.txt as description (if present)
+        const descFile = allFiles.find((f) => /^desc\.txt$/i.test(f));
+        let description = null;
+
+        if (descFile) {
+          try {
+            const raw = fs.readFileSync(
+              path.join(policyPath, descFile),
+              "utf8"
+            );
+            const trimmed = raw.trim();
+            if (trimmed) {
+              description = trimmed;
+            }
+          } catch (e) {
+            console.error("Error reading Desc.txt for", policyName, e);
+          }
+        }
+
+        // 🔹 Only consider real documents for latest file (ignore Desc.txt)
+        const docFiles = allFiles.filter((f) => !/^desc\.txt$/i.test(f));
+        if (!docFiles.length) return; // nothing except Desc.txt
 
         // determine latest file by modified date
-        let latest = files[0];
+        let latest = docFiles[0];
         let latestTime = fs.statSync(path.join(policyPath, latest)).mtimeMs;
 
-        files.forEach((file) => {
+        docFiles.forEach((file) => {
           const full = path.join(policyPath, file);
           const t = fs.statSync(full).mtimeMs;
           if (t > latestTime) {
@@ -145,6 +171,7 @@ router.get("/", (req, res) => {
           name: policyName,
           fileUrl: `/policies/${category}/${policyName}/${latest}`,
           updated: stat.mtime.toISOString().slice(0, 10),
+          description, // NEW
         });
       });
 
@@ -252,6 +279,8 @@ router.delete("/:category/:policyName", (req, res) => {
 /* ----------------------------------------------------------
    DOWNLOAD LATEST FILE FOR A POLICY
    GET /api/policies/download/:category/:policyName
+
+   Desc.txt is ignored here – only real documents are considered.
 ----------------------------------------------------------- */
 router.get("/download/:category/:policyName", (req, res) => {
   try {
@@ -263,19 +292,28 @@ router.get("/download/:category/:policyName", (req, res) => {
       return res.status(404).json({ message: "Policy folder not found" });
     }
 
-    const files = fs
+    const allFiles = fs
       .readdirSync(policyFolder)
       .filter((f) => fs.statSync(path.join(policyFolder, f)).isFile());
 
-    if (!files.length) {
+    if (!allFiles.length) {
       return res.status(404).json({ message: "No files found for this policy" });
     }
 
-    // Get the latest modified file
-    let latest = files[0];
+    // Ignore Desc.txt – only download document files
+    const docFiles = allFiles.filter((f) => !/^desc\.txt$/i.test(f));
+
+    if (!docFiles.length) {
+      return res
+        .status(404)
+        .json({ message: "No document files found for this policy" });
+    }
+
+    // Get the latest modified document
+    let latest = docFiles[0];
     let latestTime = fs.statSync(path.join(policyFolder, latest)).mtimeMs;
 
-    files.forEach((file) => {
+    docFiles.forEach((file) => {
       const full = path.join(policyFolder, file);
       const t = fs.statSync(full).mtimeMs;
       if (t > latestTime) {
