@@ -8,14 +8,32 @@ const router = express.Router();
 // Register for an event
 router.post("/register", async (req, res) => {
   try {
-    const { user, email, eventId, eventName } = req.body;
+    const {
+      user,
+      email,
+      userName,
+      userEmail,
+      eventId,
+      eventName,
+    } = req.body;
 
-    if (!user || !email || !eventId || !eventName) {
-      return res.status(400).json({ success: false, error: "Missing fields" });
+    // ✅ Support both key styles
+    const finalName = userName || user;
+    const finalEmail = userEmail || email;
+
+    if (!finalName || !finalEmail || !eventId || !eventName) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Missing fields" });
     }
 
     // Save registration in DB
-    const newReg = new Registration({ user, email, eventId, eventName });
+    const newReg = new Registration({
+      user: finalName,
+      email: finalEmail,
+      eventId,
+      eventName,
+    });
     await newReg.save();
 
     // Send email notification
@@ -29,8 +47,8 @@ router.post("/register", async (req, res) => {
 
     const html = `
       <h2>New Event Registration</h2>
-      <p><strong>User:</strong> ${user}</p>
-      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>User:</strong> ${finalName}</p>
+      <p><strong>Email:</strong> ${finalEmail}</p>
       <p><strong>Event:</strong> ${eventName}</p>
       <p><strong>Event ID:</strong> ${eventId}</p>
       <hr>
@@ -39,12 +57,17 @@ router.post("/register", async (req, res) => {
 
     await transporter.sendMail({
       from: `"SecureKloud Intranet" <${process.env.EMAIL_USER}>`,
-      to: process.env.HR_EMAIL,  // or event organizer
+      to: process.env.HR_EMAIL, // HR / organiser
+      cc: finalEmail,           // 👈 copy to user
       subject: `Event Registration: ${eventName}`,
       html,
     });
 
-    res.json({ success: true, message: "Registration successful & email sent" });
+    res.json({
+      success: true,
+      message:
+        "Registration successful. Email sent to HR and copied to user.",
+    });
   } catch (err) {
     console.error("❌ Registration Error:", err);
     res.status(500).json({ success: false, error: err.message });

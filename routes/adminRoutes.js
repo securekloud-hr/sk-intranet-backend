@@ -108,13 +108,28 @@ router.get("/events", async (req, res) => {
 // Create
 router.post("/events", async (req, res) => {
   try {
-    const newEvent = new Event(req.body);
+    const { title, date, type, description, registrationOpen } = req.body;
+
+    if (!title || !date || !type) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const newEvent = new Event({
+      title,
+      date,
+      type,
+      description: description || "",
+      registrationOpen: registrationOpen || false,
+    });
+
     await newEvent.save();
     res.json(newEvent);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // Update
 router.put("/events/:id", async (req, res) => {
