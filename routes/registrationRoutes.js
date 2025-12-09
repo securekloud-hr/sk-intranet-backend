@@ -1,23 +1,20 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
 const Registration = require("../models/Registration");
+
 require("dotenv").config();
 
 const router = express.Router();
 
+// -----------------------------------------------------------------------------
+// POST /api/registerEvent/register
 // Register for an event
+// -----------------------------------------------------------------------------
 router.post("/register", async (req, res) => {
   try {
-    const {
-      user,
-      email,
-      userName,
-      userEmail,
-      eventId,
-      eventName,
-    } = req.body;
+    const { user, email, userName, userEmail, eventId, eventName } = req.body;
 
-    // ✅ Support both key styles
+    // ✅ Support both key styles (old + new)
     const finalName = userName || user;
     const finalEmail = userEmail || email;
 
@@ -70,6 +67,30 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Registration Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -----------------------------------------------------------------------------
+// GET /api/registerEvent/event/:eventId
+// Get all registrations for a specific event
+// -----------------------------------------------------------------------------
+router.get("/event/:eventId", async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const regs = await Registration.find({ eventId }).sort({
+      createdAt: -1,
+    });
+
+    // ⬇️ nice structured response
+    res.json({
+      success: true,
+      count: regs.length,
+      data: regs,
+    });
+  } catch (err) {
+    console.error("❌ Fetch registrations error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
