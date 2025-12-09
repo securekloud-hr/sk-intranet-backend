@@ -14,7 +14,7 @@ const EmployeeSchema = new mongoose.Schema({
 
   // Legacy email (keep for compatibility)
   Email: String,
-
+  Birthday: String,
   PhoneNumber: String,
   CurrentAddress: String,
   PermanentAddress: String,
