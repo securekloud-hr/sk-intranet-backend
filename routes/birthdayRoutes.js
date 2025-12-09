@@ -30,8 +30,11 @@ router.get("/bom", async (req, res) => {
     const result = sorted.map((emp) => ({
       empId: emp.EmpID,
       name: emp.EmployeeName,
-      birthday: emp.Birthday, // "21/06"
+      // 👇 ALWAYS send this field (empty string if missing)
+      birthday: emp.Birthday || "",
     }));
+
+    console.log("BOM API result:", result); // debug log
 
     res.json(result);
   } catch (err) {

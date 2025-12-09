@@ -6,10 +6,12 @@ require("dotenv").config();
 
 const router = express.Router();
 
-// -----------------------------------------------------------------------------
-// POST /api/registerEvent/register
-// Register for an event
-// -----------------------------------------------------------------------------
+/**
+ * ---------------------------------------------------------------------------
+ * POST /api/registerEvent/register
+ * Register for an event (one registration per user+event)
+ * ---------------------------------------------------------------------------
+ */
 router.post("/register", async (req, res) => {
   try {
     const { user, email, userName, userEmail, eventId, eventName } = req.body;
@@ -24,14 +26,26 @@ router.post("/register", async (req, res) => {
         .json({ success: false, error: "Missing fields" });
     }
 
+    // 🔒 Check if this user is already registered for this event
+    const existing = await Registration.findOne({
+      eventId,
+      email: finalEmail,
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Already registered for this event",
+      });
+    }
+
     // Save registration in DB
-    const newReg = new Registration({
+    const newReg = await Registration.create({
       user: finalName,
       email: finalEmail,
       eventId,
       eventName,
     });
-    await newReg.save();
 
     // Send email notification
     const transporter = nodemailer.createTransport({
@@ -64,26 +78,36 @@ router.post("/register", async (req, res) => {
       success: true,
       message:
         "Registration successful. Email sent to HR and copied to user.",
+      data: newReg,
     });
   } catch (err) {
+    // Catch duplicate key error as extra safety (if unique index is added)
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Already registered for this event",
+      });
+    }
+
     console.error("❌ Registration Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// -----------------------------------------------------------------------------
-// GET /api/registerEvent/event/:eventId
-// Get all registrations for a specific event
-// -----------------------------------------------------------------------------
+/**
+ * ---------------------------------------------------------------------------
+ * GET /api/registerEvent/event/:eventId
+ * Get all registrations for a specific event
+ * ---------------------------------------------------------------------------
+ */
 router.get("/event/:eventId", async (req, res) => {
   try {
     const { eventId } = req.params;
 
     const regs = await Registration.find({ eventId }).sort({
-      createdAt: -1,
+      registeredAt: -1,
     });
 
-    // ⬇️ nice structured response
     res.json({
       success: true,
       count: regs.length,
@@ -91,6 +115,32 @@ router.get("/event/:eventId", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Fetch registrations error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * GET /api/registerEvent/user/:email
+ * Get all registrations for a specific user (by email)
+ *   – used by frontend to disable Register button
+ * ---------------------------------------------------------------------------
+ */
+router.get("/user/:email", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email || "");
+
+    const regs = await Registration.find({ email }).sort({
+      registeredAt: -1,
+    });
+
+    res.json({
+      success: true,
+      count: regs.length,
+      data: regs,
+    });
+  } catch (err) {
+    console.error("❌ Fetch user registrations error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
