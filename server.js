@@ -22,8 +22,7 @@ const sendSkillNotification = require("./api/sendSkillNotification");
 const sendCertificationNotification = require("./api/sendCertificationNotification");
 const learningRoutes = require("./routes/learningRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
-
-
+const registerEvent = require("./api/registerEvent");
 const orgRoutes = require("./routes/org");
 const jobsRoutes = require("./routes/jobs");
 const referralRoutes = require("./api/referral");
@@ -333,9 +332,6 @@ app.use("/api/sendCertificationNotification", sendCertificationNotification);
 app.use("/api", learningRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/registerEvent", registerEvent);
-// Use the same router for both register + view registrations
-app.use("/api/registerEvent", registrationRoutes);
-
 app.use("/api/org", orgRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/referral", referralRoutes);
