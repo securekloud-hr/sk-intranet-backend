@@ -15,18 +15,30 @@ const Holiday = require("../models/Holiday");
 
 // ---------- Helpers ----------
 const MONTHS = {
-  jan: 0, january: 0,
-  feb: 1, february: 1,
-  mar: 2, march: 2,
-  apr: 3, april: 3,
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
   may: 4,
-  jun: 5, june: 5,
-  jul: 6, july: 6,
-  aug: 7, august: 7,
-  sep: 8, sept: 8, september: 8,
-  oct: 9, october: 9,
-  nov: 10, november: 10,
-  dec: 11, december: 11,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
 };
 
 const toUTCDate = (y, m, d) => new Date(Date.UTC(y, m, d));
@@ -36,33 +48,61 @@ function parseDateToken(token, fallbackYear) {
 
   // YYYY-MM-DD or YYYY/MM/DD
   let m1 = token.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-  if (m1) { y = +m1[1]; m = +m1[2] - 1; d = +m1[3]; return toUTCDate(y, m, d); }
+  if (m1) {
+    y = +m1[1];
+    m = +m1[2] - 1;
+    d = +m1[3];
+    return toUTCDate(y, m, d);
+  }
 
   // DD-MM-YYYY or DD/MM/YYYY
   let m2 = token.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
-  if (m2) { d = +m2[1]; m = +m2[2] - 1; y = +m2[3]; return toUTCDate(y, m, d); }
+  if (m2) {
+    d = +m2[1];
+    m = +m2[2] - 1;
+    y = +m2[3];
+    return toUTCDate(y, m, d);
+  }
 
   // 26 Jan 2025 / 26 January 2025
   let m3 = token.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
-  if (m3) { d = +m3[1]; const mm = m3[2].toLowerCase(); y = +m3[3];
-    if (Object.prototype.hasOwnProperty.call(MONTHS, mm)) return toUTCDate(y, MONTHS[mm], d); }
+  if (m3) {
+    d = +m3[1];
+    const mm = m3[2].toLowerCase();
+    y = +m3[3];
+    if (Object.prototype.hasOwnProperty.call(MONTHS, mm)) {
+      return toUTCDate(y, MONTHS[mm], d);
+    }
+  }
 
   // Jan 26, 2025 / January 26, 2025
   let m4 = token.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
-  if (m4) { const mm = m4[1].toLowerCase(); d = +m4[2]; y = +m4[3];
-    if (Object.prototype.hasOwnProperty.call(MONTHS, mm)) return toUTCDate(y, MONTHS[mm], d); }
+  if (m4) {
+    const mm = m4[1].toLowerCase();
+    d = +m4[2];
+    y = +m4[3];
+    if (Object.prototype.hasOwnProperty.call(MONTHS, mm)) {
+      return toUTCDate(y, MONTHS[mm], d);
+    }
+  }
 
   // Jan 26  (infer year)
   let m5 = token.match(/^([A-Za-z]+)\s+(\d{1,2})$/);
   if (m5 && fallbackYear) {
-    const mm = m5[1].toLowerCase(); d = +m5[2];
-    if (Object.prototype.hasOwnProperty.call(MONTHS, mm)) return toUTCDate(fallbackYear, MONTHS[mm], d);
+    const mm = m5[1].toLowerCase();
+    d = +m5[2];
+    if (Object.prototype.hasOwnProperty.call(MONTHS, mm)) {
+      return toUTCDate(fallbackYear, MONTHS[mm], d);
+    }
   }
   return null;
 }
 
+// ---------- Core extractor (handles 2025 + 2026 styles) ----------
 function extractRows(text, defaultYear) {
-  // Normalize/clean lines; join tiny artifact lines
+  // -------------------------------
+  // PASS 1: line-based logic (works for 2025 PDF)
+  // -------------------------------
   const raw = text
     .split(/\r?\n/)
     .map((l) => l.replace(/\s+–\s+/g, " - ").trim())
@@ -71,15 +111,19 @@ function extractRows(text, defaultYear) {
   const lines = [];
   for (let i = 0; i < raw.length; i++) {
     const cur = raw[i];
-    if (cur.length < 4 && raw[i + 1]) { lines.push(`${cur} ${raw[i + 1]}`); i++; }
-    else lines.push(cur);
+    if (cur.length < 4 && raw[i + 1]) {
+      lines.push(`${cur} ${raw[i + 1]}`);
+      i++;
+    } else {
+      lines.push(cur);
+    }
   }
 
-  // Find a date ANYWHERE in the line (PDF style: "Name - Weekday - DD Month YYYY")
   const dateTokenRegex =
     /(\d{4}[-/]\d{1,2}[-/]\d{1,2})|(\d{1,2}[-/]\d{1,2}[-/]\d{4})|(\d{1,2}\s+[A-Za-z]+\s+\d{4})|([A-Za-z]+\s+\d{1,2},\s*\d{4})/;
 
   const rows = [];
+
   for (const line of lines) {
     const m = line.match(dateTokenRegex);
     if (!m) continue;
@@ -88,18 +132,101 @@ function extractRows(text, defaultYear) {
     const dt = parseDateToken(token, defaultYear);
     if (!dt) continue;
 
-    // Derive holiday name from the rest of the line
     const name = line
       .replace(token, "")
       .replace(/^\s*\d+\s+/, "") // leading numbering e.g. "1 "
-      .replace(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/gi, "")
+      .replace(
+        /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/gi,
+        ""
+      )
       .replace(/[–—-]\s*/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
     if (name) rows.push({ date: dt, name });
   }
-  return rows;
+
+  // If this worked (2025-style), stop here.
+  if (rows.length) return rows;
+
+  // -------------------------------
+  // PASS 2: token-based fallback (for weird layouts like some 2026 PDFs)
+  // Pattern in tokens:
+  //   SL  NAME...  WEEKDAY  DAY  MONTH  YEAR
+  // e.g. "1 New Year's Day Thursday 1 January 2026"
+  // -------------------------------
+  const tokens = text
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const DAYS = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+
+  const fallbackRows = [];
+  let i = 0;
+
+  while (i < tokens.length) {
+    // 1) SL number
+    if (!/^\d+$/.test(tokens[i])) {
+      i++;
+      continue;
+    }
+
+    const serial = Number(tokens[i]);
+    if (serial < 1 || serial > 40) {
+      i++;
+      continue;
+    }
+
+    // 2) Collect name tokens until weekday
+    let j = i + 1;
+    const nameTokens = [];
+
+    while (j < tokens.length && !DAYS.includes(tokens[j].toLowerCase())) {
+      nameTokens.push(tokens[j]);
+      j++;
+    }
+
+    if (j >= tokens.length) break; // no weekday
+    if (j + 3 >= tokens.length) break; // need weekday, day, month, year
+
+    const dayTok = tokens[j + 1];
+    const monthTok = tokens[j + 2];
+
+    if (!/^\d+$/.test(dayTok)) {
+      i++;
+      continue;
+    }
+
+    const dayNum = Number(dayTok);
+    const monthIndex = MONTHS[monthTok.toLowerCase()];
+    const yearNum = defaultYear; // 🔴 always trust form year
+
+    if (
+      !Number.isNaN(dayNum) &&
+      monthIndex !== undefined &&
+      !Number.isNaN(yearNum)
+    ) {
+      const dt = toUTCDate(yearNum, monthIndex, dayNum);
+      const name = nameTokens.join(" ").trim();
+      if (name) {
+        fallbackRows.push({ date: dt, name });
+      }
+    }
+
+    // Jump to after YEAR token
+    i = j + 4;
+  }
+
+  return fallbackRows;
 }
 
 // ---------- Controllers ----------
@@ -108,25 +235,23 @@ exports.ingestFromPdf = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No file" });
 
     const region = (req.body.region || "IN").toUpperCase();
-    const declaredYear = req.body.year ? Number(req.body.year) : undefined;
+    const defaultYear = Number(req.body.year);
+
+    if (!defaultYear || Number.isNaN(defaultYear)) {
+      return res
+        .status(400)
+        .json({ message: "Year is required in form data (e.g., 2025)" });
+    }
 
     // ✅ use pdf-parse directly
     const parsed = await pdfParse(req.file.buffer);
     const text = parsed.text || "";
 
-    // Infer year if not provided
-    let defaultYear = declaredYear;
-    if (!defaultYear) {
-      const ym = text.match(/\b(20\d{2})\b/);
-      if (ym) defaultYear = Number(ym[1]);
-    }
-    if (!defaultYear) {
-      return res.status(400).json({ message: "Could not infer year; include 'year' in form data." });
-    }
-
     const rows = extractRows(text, defaultYear);
     if (!rows.length) {
-      return res.status(422).json({ message: "No holiday rows recognized in PDF." });
+      return res
+        .status(422)
+        .json({ message: "No holiday rows recognized in PDF." });
     }
 
     const ops = rows.map((r) => {
