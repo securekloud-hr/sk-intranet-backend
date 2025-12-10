@@ -2,16 +2,16 @@ const mongoose = require("mongoose");
 
 const registrationSchema = new mongoose.Schema(
   {
-    user: { type: String, required: true },       // User name
-    email: { type: String, required: true },      // User email
-    eventId: { type: String, required: true },    // Event _id or BOM id
-    eventName: { type: String, required: true },  // Event title
+    user: { type: String, required: true },
+    email: { type: String, required: true },
+    eventId: { type: String, required: true },
+    eventName: { type: String, required: true },
     registeredAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-// ❗ VERY IMPORTANT: one registration per event+email
+// ❗ one registration per event + email
 registrationSchema.index({ eventId: 1, email: 1 }, { unique: true });
 
 module.exports =

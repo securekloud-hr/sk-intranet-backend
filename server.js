@@ -22,7 +22,7 @@ const sendSkillNotification = require("./api/sendSkillNotification");
 const sendCertificationNotification = require("./api/sendCertificationNotification");
 const learningRoutes = require("./routes/learningRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
-const registerEvent = require("./api/registerEvent");
+//const registerEvent = require("./api/registerEvent");
 const orgRoutes = require("./routes/org");
 const jobsRoutes = require("./routes/jobs");
 const referralRoutes = require("./api/referral");
@@ -330,8 +330,12 @@ app.use("/api/sendCourseNotification", sendCourseNotification);
 app.use("/api/sendSkillNotification", sendSkillNotification);
 app.use("/api/sendCertificationNotification", sendCertificationNotification);
 app.use("/api", learningRoutes);
+// New main path used by frontend
+app.use("/api/registerEvent", registrationRoutes);
+
+// (Optional: keep old path if something else uses it)
 app.use("/api/registrations", registrationRoutes);
-app.use("/api/registerEvent", registerEvent);
+
 app.use("/api/org", orgRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/referral", referralRoutes);
