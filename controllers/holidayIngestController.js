@@ -307,3 +307,24 @@ exports.listByYear = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch holidays" });
   }
 };
+
+// 🔹 NEW: listYears – returns all distinct years (for dropdown)
+exports.listYears = async (req, res) => {
+  try {
+    const region = (req.query.region || "IN").toUpperCase();
+
+    // we saved `year` + `region` in ingestFromPdf
+    let years = await Holiday.distinct("year", { region });
+
+    // ensure numeric sort (distinct may return strings)
+    years = years
+      .map((y) => Number(y))
+      .filter((y) => !Number.isNaN(y))
+      .sort((a, b) => a - b);
+
+    return res.json({ years });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Failed to fetch holiday years" });
+  }
+};

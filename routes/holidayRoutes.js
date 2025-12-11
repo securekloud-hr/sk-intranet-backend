@@ -1,23 +1,21 @@
 // backend/routes/holidayRoutes.js
 const express = require("express");
 const multer = require("multer");
-const { ingestFromPdf, listByYear } = require("../controllers/holidayIngestController");
-// const { requireAdmin } = require("../middleware/auth"); // <- enable when you want admin-only
+const {
+  ingestFromPdf,
+  listByYear,
+  listYears, // 👈 make sure this is imported
+} = require("../controllers/holidayIngestController");
 
 const router = express.Router();
 
-// Use memory storage so we can read the PDF buffer directly in the controller
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
-// Upload a Holiday PDF, extract rows, save to MongoDB
-// form-data: file=<pdf>, year=<YYYY> (optional but recommended), region=<IN|...>
 router.post("/ingest-pdf", /* requireAdmin, */ upload.single("file"), ingestFromPdf);
-
-// Fetch holidays for UI
-// GET /api/holidays?year=2025&region=IN
 router.get("/", listByYear);
+router.get("/years", listYears); // 👈 dynamic year list
 
 module.exports = router;

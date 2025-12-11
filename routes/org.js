@@ -462,103 +462,57 @@ function transformExcelToOrgStructure(employees) {
   });
 
 
-
-  // Step 3: Build executive branches in the correct order: Operations FIRST, then CFO, CDO, CRO
+  // Step 3: Build executive branches
+  // - First: preferred labelled executives (Operations, CFO, CDO, CRO)
+  // - Then: all other direct reports of CEO (except Senior EA)
 
   const branches = [];
+  const usedExecNames = new Set();
 
+  function addBranch(id, execEmployee) {
+    if (!execEmployee || usedExecNames.has(execEmployee.name)) return;
 
+    branches.push({
+      id,
+      executive: execEmployee,
+      color: "bg-orange-500",
+      departments: buildDepartmentsForExecutive(execEmployee.name, reportingMap),
+    });
 
-  // 1. OPERATIONS BRANCH FIRST (Director&operations)
+    usedExecNames.add(execEmployee.name);
+    console.log(`✅ Added branch [${id}] for: ${execEmployee.name}`);
+  }
 
+  // 1️⃣ Preferred / labelled executives in fixed order
   if (executives.operations) {
-
-   branches.push({
-
-    id: 'operations',
-
-    executive: executives.operations,
-
-    color: 'bg-orange-500',
-
-    departments: buildDepartmentsForExecutive(executives.operations.name, reportingMap)
-
-   });
-
-   console.log(`✅ Added Operations branch: ${executives.operations.name}`);
-
+    addBranch("operations", executives.operations);
   } else {
-
-   console.log(`❌ Operations executive not found`);
-
+    console.log("❌ Operations executive not found");
   }
 
+  if (executives.cfo) addBranch("cfo", executives.cfo);
+  if (executives.cdo) addBranch("cdo", executives.cdo);
+  if (executives.cro) addBranch("cro", executives.cro);
 
+  // 2️⃣ Any other direct reports of CEO become branches
+  if (ceo) {
+    const directReportsOfCeo = reportingMap.get(ceo.name) || [];
 
-  // 2. CFO BRANCH SECOND
+    directReportsOfCeo.forEach((emp) => {
+      // skip Senior EA (you already show her as separate green card)
+      if (seniorEA && emp.name === seniorEA.name) return;
+      if (usedExecNames.has(emp.name)) return; // already added above
 
-  if (executives.cfo) {
+      const dynamicId =
+        normalizeKey(emp.name) ||
+        emp.id ||
+        `branch-${branches.length + 1}`;
 
-   branches.push({
-
-    id: 'cfo',
-
-    executive: executives.cfo,
-
-    color: 'bg-orange-500',
-
-    departments: buildDepartmentsForExecutive(executives.cfo.name, reportingMap)
-
-   });
-
-   console.log(`✅ Added CFO branch: ${executives.cfo.name}`);
-
+      addBranch(dynamicId, emp);
+    });
+  } else {
+    console.log("⚠️ CEO not found while trying to build generic branches");
   }
-
-
-
-  // 3. CDO BRANCH THIRD
-
-  if (executives.cdo) {
-
-   branches.push({
-
-    id: 'cdo',
-
-    executive: executives.cdo,
-
-    color: 'bg-orange-500',
-
-    departments: buildDepartmentsForExecutive(executives.cdo.name, reportingMap)
-
-   });
-
-   console.log(`✅ Added CDO branch: ${executives.cdo.name}`);
-
-  }
-
-
-
-  // 4. CRO BRANCH FOURTH
-
-  if (executives.cro) {
-
-   branches.push({
-
-    id: 'cro',
-
-    executive: executives.cro,
-
-    color: 'bg-orange-500',
-
-    departments: buildDepartmentsForExecutive(executives.cro.name, reportingMap)
-
-   });
-
-   console.log(`✅ Added CRO branch: ${executives.cro.name}`);
-
-  }
-
 
 
   // Provide defaults if executives not found
