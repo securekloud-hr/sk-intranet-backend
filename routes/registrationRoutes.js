@@ -1,6 +1,7 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
 const Registration = require("../models/Registration");
+const Employee = require("../models/EmployeeDirectory"); // ✅ NEW: to fetch EmpID
 
 require("dotenv").config();
 
@@ -39,10 +40,30 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Save registration in DB
+    // ✅ Look up EmpID from Employee Directory using email
+    let empId = null;
+    try {
+      const emp = await Employee.findOne({
+        $or: [
+          { OfficialEmail: finalEmail },
+          { Email: finalEmail },
+          { PersonalEmailID: finalEmail },
+        ],
+      });
+
+      if (emp) {
+        empId = emp.EmpID || null;
+      }
+    } catch (lookupErr) {
+      console.error("⚠️ Employee lookup failed:", lookupErr.message);
+      // continue even if lookup fails
+    }
+
+    // ✅ Save registration in DB (with empId)
     const newReg = await Registration.create({
       user: finalName,
       email: finalEmail,
+      empId, // 👈 stored here
       eventId,
       eventName,
     });
@@ -59,6 +80,7 @@ router.post("/register", async (req, res) => {
     const html = `
       <h2>New Event Registration</h2>
       <p><strong>User:</strong> ${finalName}</p>
+      <p><strong>Emp ID:</strong> ${empId || "N/A"}</p>
       <p><strong>Email:</strong> ${finalEmail}</p>
       <p><strong>Event:</strong> ${eventName}</p>
       <p><strong>Event ID:</strong> ${eventId}</p>
@@ -69,7 +91,7 @@ router.post("/register", async (req, res) => {
     await transporter.sendMail({
       from: `"SecureKloud Intranet" <${process.env.EMAIL_USER}>`,
       to: process.env.HR_EMAIL, // HR / organiser
-      cc: finalEmail,           // 👈 copy to user
+      cc: finalEmail, // 👈 copy to user
       subject: `Event Registration: ${eventName}`,
       html,
     });
@@ -111,7 +133,7 @@ router.get("/event/:eventId", async (req, res) => {
     res.json({
       success: true,
       count: regs.length,
-      data: regs,
+      data: regs, // 🔙 now includes empId for each registration
     });
   } catch (err) {
     console.error("❌ Fetch registrations error:", err);
