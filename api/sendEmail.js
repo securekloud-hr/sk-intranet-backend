@@ -26,14 +26,22 @@ module.exports = async function (req, res) {
     });
 
     // Decide recipient
-    let recipient = process.env.DEFAULT_RECIPIENT;
-    if (type === "hr" || type === "query") {
-      recipient = process.env.HR_EMAIL;
-    } else if (type === "it" || type === "ticket") {
-      recipient = process.env.IT_EMAIL;
-    } else if (type === "payroll") {
-      recipient = process.env.FINANCE_EMAIL;
-    }
+   let recipient = process.env.DEFAULT_RECIPIENT;
+
+if (type === "hr" || type === "query") {
+  recipient = process.env.HR_EMAIL;
+
+} else if (type === "it" || type === "ticket") {
+  recipient = process.env.IT_EMAIL;
+
+} else if (type === "payroll") {
+  recipient = process.env.FINANCE_EMAIL;
+
+} else if (type === "ld-skill") {
+  recipient = process.env.HR_EMAIL; 
+  // OR recipient = process.env.LD_EMAIL if you have a separate email
+}
+
 
     // ✅ Generate PDF for query
     const pdfPath = path.join(__dirname, `query_${Date.now()}.pdf`);
