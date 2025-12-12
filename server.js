@@ -9,6 +9,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
+const SkillMailLog = require("./models/SkillMailLog");
 
 // If your Node version < 18, uncomment this to polyfill fetch:
 // const fetch = (...args) => import("node-fetch").then(({ default: f }) => f(...args));
@@ -39,14 +40,6 @@ const internalJobsRoutes = require("./routes/internalJobs");
 const jobApplyRoutes = require("./routes/jobApplyRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const birthdayRoutes = require("./routes/birthdayRoutes");
-
-
-
-
-
-
-
-
 
 const app = express();
 
@@ -81,18 +74,16 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB error:", err));
 
-// ---------- Models ----------
 const querySchema = new mongoose.Schema({
   name: String,
   email: String,
   message: String,
+  type: String, // 👈 added so you can see ld-skill / ticket / etc
   timestamp: { type: Date, default: Date.now },
   status: { type: String, default: "pending" },
 });
 const Query = mongoose.model("Query", querySchema);
 
-// ---------- Gmail transporter ----------
-// ---------- Outlook / Office 365 transporter ----------
 // ---------- Gmail transporter ----------
 const gmailTransporter = nodemailer.createTransport({
   service: "gmail",
@@ -102,12 +93,12 @@ const gmailTransporter = nodemailer.createTransport({
   },
 });
 
-
-
 // ---------- Gmail endpoints (HR / IT / Payroll via type) ----------
 app.post("/api/sendEmail", async (req, res) => {
   try {
     const { name, email, subject, message, type } = req.body || {};
+
+    console.log("📥 /api/sendEmail type:", type);
 
     if (!name || !email || !message) {
       return res
@@ -115,9 +106,33 @@ app.post("/api/sendEmail", async (req, res) => {
         .json({ success: false, error: "Missing fields" });
     }
 
-    // Save query in DB
-    const newQuery = new Query({ name, email, message });
-    await newQuery.save();
+    // ⭐ Decide final subject first
+    const finalSubject =
+      subject && subject.trim().length > 0
+        ? subject
+        : `Query from ${name}`;
+
+    // ⭐ Save in correct collection
+    if (type === "ld-skill") {
+      // 🔹 Learning & Development skills emails → SkillMailLog collection
+      console.log("🟣 Saving to SkillMailLog");
+      await SkillMailLog.create({
+        name,
+        email,
+        subject: finalSubject,
+        message,
+        type,
+      });
+    } else {
+      // 🔹 All other queries (HR / IT / Payroll / generic) → Query collection
+      console.log("🟢 Saving to Query");
+      await Query.create({
+        name,
+        email,
+        message,
+        type,
+      });
+    }
 
     // Decide which team to send to
     let toAddress = process.env.HR_EMAIL || process.env.DEFAULT_RECIPIENT;
@@ -128,16 +143,11 @@ app.post("/api/sendEmail", async (req, res) => {
       toAddress = process.env.FINANCE_EMAIL || process.env.DEFAULT_RECIPIENT;
     }
 
-    // ⭐ NEW: subject handling
-    const finalSubject =
-      subject && subject.trim().length > 0
-        ? subject
-        : `Query from ${name}`;
-
     const html = `
       <h2>${finalSubject}</h2>
       <p><strong>From:</strong> ${name}</p>
       <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Type:</strong> ${type}</p>
       <p><strong>Message:</strong><br>${message}</p>
     `;
 
@@ -145,7 +155,7 @@ app.post("/api/sendEmail", async (req, res) => {
       from: `"SecureKloud Support" <${process.env.EMAIL_USER}>`,
       to: toAddress,
       cc: email,
-      subject: finalSubject,   // ⭐ uses user-entered subject
+      subject: finalSubject, // ⭐ uses user-entered subject (or default)
       html,
     });
 
@@ -189,8 +199,6 @@ app.post("/api/sendTicket", async (req, res) => {
 // --------------------------------------------------------
 // Microsoft Graph OBO route — send AS the signed-in user
 // --------------------------------------------------------
-
-// MSAL confidential client
 const cca = new ConfidentialClientApplication({
   auth: {
     clientId: process.env.AZURE_CLIENT_ID,
@@ -230,25 +238,20 @@ app.use((req, _res, next) => {
  */
 app.post("/api/support/sendMail", async (req, res) => {
   try {
-    // 1) Extract user token
     const authz = req.headers.authorization || "";
     const userAssertion = authz.startsWith("Bearer ") ? authz.slice(7) : null;
     if (!userAssertion) {
       return res.status(401).json({ error: "Missing bearer token" });
     }
 
-    // 2) Safely read body WITHOUT using .trim anywhere
-    const rawBody =
-      req.body && typeof req.body === "object" ? req.body : {};
+    const rawBody = req.body && typeof req.body === "object" ? req.body : {};
     const rawMessage = rawBody.message;
     const rawType = rawBody.type;
 
-    // ensure we have a non-empty message
     if (typeof rawMessage !== "string" || rawMessage.length === 0) {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    // normalise type to string but no trim here
     const type =
       typeof rawType === "string" && rawType.length > 0
         ? rawType.toLowerCase()
@@ -267,19 +270,17 @@ app.post("/api/support/sendMail", async (req, res) => {
         .json({ error: `Unknown type '${type}' or missing destination email` });
     }
 
-    // 3) OBO: exchange user token for Graph delegated token with Mail.Send
     const obo = await cca.acquireTokenOnBehalfOf({
       oboAssertion: userAssertion,
-      scopes: ["Mail.Send"], // Graph delegated Mail.Send
+      scopes: ["Mail.Send"],
     });
 
     const graphToken = obo.accessToken;
 
-    // 4) Send mail as the user via Microsoft Graph
     const payload = {
       message: {
         subject: GRAPH_SUBJECTS[type] || "Support Query",
-        body: { contentType: "Text", content: rawMessage }, // send exactly what user typed
+        body: { contentType: "Text", content: rawMessage },
         toRecipients: [{ emailAddress: { address: to } }],
       },
       saveToSentItems: true,
@@ -332,7 +333,6 @@ app.use("/api/sendCertificationNotification", sendCertificationNotification);
 app.use("/api", learningRoutes);
 // New main path used by frontend
 app.use("/api/registerEvent", registrationRoutes);
-
 // (Optional: keep old path if something else uses it)
 app.use("/api/registrations", registrationRoutes);
 
@@ -358,9 +358,10 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/learning", learningRoutes);
 app.use("/api/birthdays", birthdayRoutes);
 
-
-app.use("/past-events", express.static("/home/ubuntu/sk-intranet-frontend/public/past-events"));
-
+app.use(
+  "/past-events",
+  express.static("/home/ubuntu/sk-intranet-frontend/public/past-events")
+);
 
 // ---------- Start server ----------
 const PORT = process.env.PORT || 8000;

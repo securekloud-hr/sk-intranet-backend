@@ -4,6 +4,10 @@ const router = express.Router();
 const Employee = require("../models/EmployeeDirectory");
 const nodemailer = require("nodemailer");
 const mongoose = require("mongoose");
+const SkillDefinition = require("../models/SkillDefinition");
+const SkillMailLog = require("../models/SkillMailLog");
+
+
 
 // =======================
 // Mail transporter
@@ -85,17 +89,7 @@ router.post("/add-skill", async (req, res) => {
 // =======================
 // MongoDB: skills_definition
 // =======================
-const SkillDefinition = mongoose.model(
-  "SkillDefinition",
-  new mongoose.Schema(
-    {
-      Type: String, // "Certification" | "Skill"
-      Provider: String, // e.g. "AWS", "Java"
-      Tech: String, // e.g. "Cloud Practitioner", "Script"
-    },
-    { collection: "skills_definition" }
-  )
-);
+
 
 // =======================
 // ONE GET route for all skill metadata
