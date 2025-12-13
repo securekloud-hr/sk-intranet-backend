@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-const SkillMailLog = require("../models/SkillMailLog"); // 👈 ADD THIS
+const SkillMailLog = require("../models/SkillMailLog");
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -18,6 +18,11 @@ module.exports = async function (req, res) {
   }
 
   try {
+    const safeType = (type || "").toString().trim().toLowerCase();
+
+    // ✅ L&D types that should go into SkillMailLog (same schema)
+    const isLearningMail = ["ld-skill", "ld-certification"].includes(safeType);
+
     // Gmail SMTP transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -30,18 +35,18 @@ module.exports = async function (req, res) {
     // Decide recipient
     let recipient = process.env.DEFAULT_RECIPIENT;
 
-    if (type === "hr" || type === "query") {
+    if (safeType === "hr" || safeType === "query") {
       recipient = process.env.HR_EMAIL;
-    } else if (type === "it" || type === "ticket") {
+    } else if (safeType === "it" || safeType === "ticket") {
       recipient = process.env.IT_EMAIL;
-    } else if (type === "payroll") {
+    } else if (safeType === "payroll") {
       recipient = process.env.FINANCE_EMAIL;
-    } else if (type === "ld-skill") {
+    } else if (isLearningMail) {
       recipient = process.env.HR_EMAIL;
       // OR recipient = process.env.LD_EMAIL if you have a separate email
     }
 
-    // ✅ Generate PDF for query
+    // ✅ Generate PDF
     const timestamp = Date.now();
     const pdfFileName = `query_${timestamp}.pdf`;
     const pdfPath = path.join(__dirname, pdfFileName);
@@ -49,27 +54,27 @@ module.exports = async function (req, res) {
     const doc = new PDFDocument();
     doc.pipe(fs.createWriteStream(pdfPath));
 
-    doc.fontSize(18).text(`New ${type.toUpperCase()} Request`, {
+    doc.fontSize(18).text(`New ${safeType.toUpperCase()} Request`, {
       align: "center",
     });
     doc.moveDown();
     doc.fontSize(12).text(`Name: ${name}`);
     doc.text(`Email: ${email}`);
-    doc.text(`Type: ${type}`);
+    doc.text(`Type: ${safeType}`);
     doc.moveDown();
     doc.text(`Message: ${message}`, { align: "left" });
     doc.end();
 
-    const subject = `New ${type.toUpperCase()} Request from ${name}`;
+    const subject = `New ${safeType.toUpperCase()} Request from ${name}`;
 
-    // 🔹 Save only ld-skill entries into SkillMailLog
-    if (type === "ld-skill") {
+    // ✅ Save BOTH skills + certifications into same SkillMailLog schema
+    if (isLearningMail) {
       await SkillMailLog.create({
         name,
         email,
         subject,
         message,
-        type,
+        type: safeType,
       });
     }
 
@@ -79,10 +84,10 @@ module.exports = async function (req, res) {
       to: recipient,
       subject,
       text: `
-        Name: ${name}
-        Email: ${email}
-        Type: ${type}
-        Message: ${message}
+Name: ${name}
+Email: ${email}
+Type: ${safeType}
+Message: ${message}
       `,
       attachments: [
         {
@@ -93,11 +98,11 @@ module.exports = async function (req, res) {
       ],
     });
 
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Email sent successfully with PDF!" });
   } catch (error) {
     console.error("Email error:", error);
-    res.status(500).json({ error: "Failed to send email" });
+    return res.status(500).json({ error: "Failed to send email" });
   }
 };
