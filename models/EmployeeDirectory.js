@@ -5,15 +5,15 @@ const EmployeeSchema = new mongoose.Schema({
   EmployeeName: String,
   Department: String,
 
-  // ===========================
-  //  Newly Added Fields (Required)
-  // ===========================
   Designation: String,
+
+  // ✅ Reporting Manager NAME (from Excel)
+  ReportingManager: String,
+
   OfficialEmail: String,
   PersonalEmailID: String,
-
-  // Legacy email (keep for compatibility)
   Email: String,
+
   Birthday: String,
   PhoneNumber: String,
   CurrentAddress: String,
