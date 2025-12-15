@@ -26,6 +26,13 @@ const EmployeeSchema = new mongoose.Schema({
   Tech1: String,
   Tech2: String,
   SpecialSkill: String,
+
+  EarnedLeave: Number,
+  CasualLeave: Number,
+  SickLeave: Number,
+  MarriageLeave: Number,
+  PaternityLeave: Number,
+
 });
 
 module.exports = mongoose.model("Employee", EmployeeSchema);

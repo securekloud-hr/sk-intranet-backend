@@ -96,6 +96,11 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         Tech1: keys["tech 1"] || keys["tech1"] || keys["tech. 1"] || "",
         Tech2: keys["tech 2"] || keys["tech2"] || keys["tech. 2"] || "",
         SpecialSkill: keys["special skill"] || "",
+        EarnedLeave: keys["earned leave"] || "",
+        CasualLeave: keys["casual leave"] || "",
+        SickLeave: keys["sick leave"] || "",
+        MarriageLeave: keys["marriage leave"] || "",
+        PaternityLeave: keys["paternity leave"] || "", 
       };
     });
 
@@ -132,8 +137,12 @@ router.get("/", async (req, res) => {
       Birthday: emp.Birthday || "",
       Tech1: emp.Tech1 || "",
       Tech2: emp.Tech2 || "",
-      SpecialSkill: emp.SpecialSkill || "",
-    }));
+      EarnedLeave: emp.EarnedLeave || "",
+      CasualLeave: emp.CasualLeave || "",
+      SickLeave: emp.SickLeave || "",
+      MarriageLeave: emp.MarriageLeave || "",
+      PaternityLeave: emp.PaternityLeave || "",                 
+        }));
 
     return res.json(sanitized);
   } catch (err) {
@@ -176,6 +185,11 @@ router.get("/by-email/:email", async (req, res) => {
         primarySkills: splitList(employee.Tech1),
         secondarySkills: splitList(employee.Tech2),
         certifications: splitList(employee.SpecialSkill),
+      EarnedLeave: employee.EarnedLeave,
+      CasualLeave: employee.CasualLeave ,
+      SickLeave: employee.SickLeave ,
+      MarriageLeave: employee.MarriageLeave ,
+      PaternityLeave: employee.PaternityLeave ,               
       },
     });
   } catch (err) {
@@ -207,7 +221,7 @@ router.put("/by-email/:email", async (req, res) => {
   }
 });
 
-// --------- BY NAME ---------
+// --------- BY NAME  **** CODE FOR THE GET AND PUT by NAME NOT USED ANYMORE - Siva 15-12-2025---------
 router.get("/by-name/:name", async (req, res) => {
   try {
     let name = decodeURIComponent(req.params.name || "").trim();
