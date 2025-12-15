@@ -12,7 +12,7 @@ const orgSchema = new mongoose.Schema({
   totalEmployees: Number,
 });
 
-const OrgStructure = mongoose.model("OrgStructure", orgSchema);
+const OrgStructure = mongoose.model("employees", orgSchema);
 
 // helper: normalize strings
 function normName(s) {
