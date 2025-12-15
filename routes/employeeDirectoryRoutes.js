@@ -23,6 +23,58 @@ const normalizeKey = (key) =>
     .replace(/\s+/g, " ");
 
 // =============================
+// Helpers
+// =============================
+
+// Excel numeric cleanup: keep number, otherwise null
+const toNullableNumber = (v) => {
+  if (v === undefined || v === null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+
+  // handle strings like "35", "35.5", " 35 "
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  return null;
+};
+
+// Mongo Decimal128 / { $numberDecimal: "35" } cleanup
+const toPlainNumberOrNull = (v) => {
+  if (v === undefined || v === null) return null;
+
+  // When API returns extended json like { $numberDecimal: "35" }
+  if (typeof v === "object" && v.$numberDecimal != null) {
+    const n = Number(v.$numberDecimal);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Mongoose Decimal128 has toString()
+  if (typeof v === "object" && typeof v.toString === "function") {
+    const n = Number(v.toString());
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // normal number/string
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+// =======================================================================
+// 🔥 CONNECTS LearningDevelopment ↔ EmployeeDirectory Database
+// =======================================================================
+const splitList = (val = "") =>
+  val
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+const joinList = (arr) => (Array.isArray(arr) ? arr.join(", ") : "");
+
+// =============================
 // 📤 Excel Upload → MongoDB
 // =============================
 router.post("/upload", upload.single("file"), async (req, res) => {
@@ -96,11 +148,13 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         Tech1: keys["tech 1"] || keys["tech1"] || keys["tech. 1"] || "",
         Tech2: keys["tech 2"] || keys["tech2"] || keys["tech. 2"] || "",
         SpecialSkill: keys["special skill"] || "",
-        EarnedLeave: keys["earned leave"] || "",
-        CasualLeave: keys["casual leave"] || "",
-        SickLeave: keys["sick leave"] || "",
-        MarriageLeave: keys["marriage leave"] || "",
-        PaternityLeave: keys["paternity leave"] || "", 
+
+        // ✅ Leaves (NO empty string; store number or null)
+        EarnedLeave: toNullableNumber(keys["earnedleave"] ?? keys["earned leave"]),
+        CasualLeave: toNullableNumber(keys["casualleave"] ?? keys["casual leave"]),
+        SickLeave: toNullableNumber(keys["sickleave"] ?? keys["sick leave"]),
+        MarriageLeave: toNullableNumber(keys["marriageleave"] ?? keys["marriage leave"]),
+        PaternityLeave: toNullableNumber(keys["paternityleave"] ?? keys["paternity leave"]),
       };
     });
 
@@ -125,7 +179,6 @@ router.get("/", async (req, res) => {
   try {
     const employees = await Employee.find().sort({ EmployeeName: 1 }).lean();
 
-    // ✅ Hide ReportingManager (needed only for OrgStructure)
     const sanitized = employees.map((emp) => ({
       EmpID: emp.EmpID || "",
       EmployeeName: emp.EmployeeName || "",
@@ -137,12 +190,15 @@ router.get("/", async (req, res) => {
       Birthday: emp.Birthday || "",
       Tech1: emp.Tech1 || "",
       Tech2: emp.Tech2 || "",
-      EarnedLeave: emp.EarnedLeave || "",
-      CasualLeave: emp.CasualLeave || "",
-      SickLeave: emp.SickLeave || "",
-      MarriageLeave: emp.MarriageLeave || "",
-      PaternityLeave: emp.PaternityLeave || "",                 
-        }));
+      SpecialSkill: emp.SpecialSkill || "",
+
+      // ✅ keep as number/null (no "")
+      EarnedLeave: emp.EarnedLeave ?? null,
+      CasualLeave: emp.CasualLeave ?? null,
+      SickLeave: emp.SickLeave ?? null,
+      MarriageLeave: emp.MarriageLeave ?? null,
+      PaternityLeave: emp.PaternityLeave ?? null,
+    }));
 
     return res.json(sanitized);
   } catch (err) {
@@ -151,24 +207,16 @@ router.get("/", async (req, res) => {
   }
 });
 
-// =======================================================================
-// 🔥 CONNECTS LearningDevelopment ↔ EmployeeDirectory Database
-// =======================================================================
-const splitList = (val = "") =>
-  val
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-const joinList = (arr) => (Array.isArray(arr) ? arr.join(", ") : "");
-
 // --------- BY EMAIL ---------
 router.get("/by-email/:email", async (req, res) => {
   try {
-    const email = decodeURIComponent(req.params.email || "").toLowerCase();
+    const email = decodeURIComponent(req.params.email || "").trim().toLowerCase();
 
     const employee = await Employee.findOne({
-      Email: { $regex: new RegExp(`^${email}$`, "i") },
+      $or: [
+        { Email: { $regex: new RegExp(`^${email}$`, "i") } },
+        { OfficialEmail: { $regex: new RegExp(`^${email}$`, "i") } },
+      ],
     }).lean();
 
     if (!employee) return res.json({ success: false, message: "User not found" });
@@ -179,17 +227,20 @@ router.get("/by-email/:email", async (req, res) => {
         id: employee._id,
         EmpID: employee.EmpID,
         name: employee.EmployeeName,
-        email: employee.Email,
+        email: employee.Email || employee.OfficialEmail,
         Birthday: employee.Birthday,
         department: employee.Department,
+
         primarySkills: splitList(employee.Tech1),
         secondarySkills: splitList(employee.Tech2),
         certifications: splitList(employee.SpecialSkill),
-      EarnedLeave: employee.EarnedLeave,
-      CasualLeave: employee.CasualLeave ,
-      SickLeave: employee.SickLeave ,
-      MarriageLeave: employee.MarriageLeave ,
-      PaternityLeave: employee.PaternityLeave ,               
+
+        // ✅ Leaves as plain numbers (Decimal128 safe)
+        EarnedLeave: toPlainNumberOrNull(employee.EarnedLeave),
+        CasualLeave: toPlainNumberOrNull(employee.CasualLeave),
+        SickLeave: toPlainNumberOrNull(employee.SickLeave),
+        MarriageLeave: toPlainNumberOrNull(employee.MarriageLeave),
+        PaternityLeave: toPlainNumberOrNull(employee.PaternityLeave),
       },
     });
   } catch (err) {
@@ -198,6 +249,7 @@ router.get("/by-email/:email", async (req, res) => {
   }
 });
 
+// (Your PUT /by-email and by-name routes can remain as-is)
 router.put("/by-email/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email || "").toLowerCase();
@@ -217,67 +269,6 @@ router.put("/by-email/:email", async (req, res) => {
     return res.json({ success: true, message: "Updated Successfully" });
   } catch (err) {
     console.error("❌ PUT /by-email error:", err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// --------- BY NAME  **** CODE FOR THE GET AND PUT by NAME NOT USED ANYMORE - Siva 15-12-2025---------
-router.get("/by-name/:name", async (req, res) => {
-  try {
-    let name = decodeURIComponent(req.params.name || "").trim();
-    name = name.replace(/\s+/g, " ").toLowerCase();
-
-    if (!name) return res.status(400).json({ success: false, message: "Name is required" });
-
-    const employee = await Employee.findOne({
-      EmployeeName: { $regex: new RegExp(`^${name}$`, "i") },
-    }).lean();
-
-    if (!employee) return res.json({ success: false, message: "User not found" });
-
-    return res.json({
-      success: true,
-      employee: {
-        id: employee._id,
-        EmpID: employee.EmpID,
-        name: employee.EmployeeName,
-        Birthday: employee.Birthday,
-        email: employee.Email,
-        department: employee.Department,
-        primarySkills: splitList(employee.Tech1),
-        secondarySkills: splitList(employee.Tech2),
-        certifications: splitList(employee.SpecialSkill),
-      },
-    });
-  } catch (err) {
-    console.error("❌ /by-name error:", err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.put("/by-name/:name", async (req, res) => {
-  try {
-    let name = decodeURIComponent(req.params.name || "").trim();
-    name = name.replace(/\s+/g, " ").toLowerCase();
-
-    const { primarySkills, secondarySkills, certifications } = req.body;
-
-    if (!name) return res.status(400).json({ success: false, message: "Name is required" });
-
-    const employee = await Employee.findOne({
-      EmployeeName: { $regex: new RegExp(`^${name}$`, "i") },
-    });
-
-    if (!employee) return res.json({ success: false, message: "Employee not found" });
-
-    employee.Tech1 = joinList(primarySkills);
-    employee.Tech2 = joinList(secondarySkills);
-    employee.SpecialSkill = joinList(certifications);
-
-    await employee.save();
-    return res.json({ success: true, message: "Updated Successfully" });
-  } catch (err) {
-    console.error("❌ PUT /by-name error:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
