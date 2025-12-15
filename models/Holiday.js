@@ -7,7 +7,6 @@ const holidaySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
     region: { type: String, default: "IN", index: true },
-    tags: [{ type: String }],
     isOptional: { type: Boolean, default: false },
     createdBy: { type: String },
     updatedBy: { type: String },
