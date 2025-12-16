@@ -122,12 +122,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         Designation: keys["designation"] || "",
 
         // ✅ Official / Work email
-        OfficialEmail:
-          keys["e mail"] ||
-          keys["e-mail id"] ||
-          keys["email id"] ||
-          keys["email"] ||
-          "",
+       
 
         // ✅ Personal email
         PersonalEmailID: keys["personal email id"] || "",
