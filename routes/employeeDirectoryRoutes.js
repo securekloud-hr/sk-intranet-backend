@@ -9,6 +9,8 @@ const Employee = require("../models/EmployeeDirectory");
 // =============================
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
+const leavebal = multer({ storage });
+
 
 // =============================
 // Normalize Excel keys
@@ -166,6 +168,64 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// =======================================================================================
+// 📤 Excel Leave Balance Upload  - Siva - Added 17/12/2025
+// =======================================================================================
+router.post("/leavebal", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames.find((name) =>
+      name.toLowerCase().includes("leave balance")
+    );
+
+    if (!sheetName) {
+      return res.status(400).json({
+        success: false,
+        error: "'leave balance' sheet not found in Excel file",
+      });
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    const data = rows.map((row) => {
+      const keys = Object.keys(row).reduce((acc, k) => {
+        acc[normalizeKey(k)] = row[k];
+        return acc;
+      }, {});
+
+      return {
+        EmpID: keys["emp id"] || "",
+        EmployeeName: keys["associate name"] || "",
+        // ✅ Leaves (NO empty string; store number or null)
+        EarnedLeave: toNullableNumber(keys["earnedleave"] ?? keys["earned leave"]),
+        CasualLeave: toNullableNumber(keys["casualleave"] ?? keys["casual leave"]),
+        SickLeave: toNullableNumber(keys["sickleave"] ?? keys["sick leave"]),
+        MarriageLeave: toNullableNumber(keys["marriageleave"] ?? keys["marriage leave"]),
+        PaternityLeave: toNullableNumber(keys["paternityleave"] ?? keys["paternity leave"]),
+      };
+    });
+
+    // **** make changes to thse two lines to update the record - NOT DELETE & INSERT THE RECORD
+    await Employee.deleteMany({}); //do not wipe out the table.....
+    await Employee.insertMany(data); // only update the leave columns....do not insert a row
+
+    return res.json({
+      success: true,
+      message: "✅ Leave Balance uploaded successfully!",
+      count: data.length,
+    });
+  } catch (err) {
+    console.error("❌ Upload error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+// ======================================END OF CODE - SIVA =================================================
 
 // =============================
 // 📥 Fetch ALL employees (SANITIZED)
