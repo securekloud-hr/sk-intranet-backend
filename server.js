@@ -357,6 +357,16 @@ app.use("/api/jobs", jobApplyRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/learning", learningRoutes);
 app.use("/api/birthdays", birthdayRoutes);
+app.use(
+  "/emp-images",
+  express.static(
+    require("path").join(
+      process.env.FRONTEND_PUBLIC_DIR || "/home/ubuntu/sk-intranet-frontend/public",
+      "emp-images"
+    )
+  )
+);
+
 
 app.use(
   "/past-events",
