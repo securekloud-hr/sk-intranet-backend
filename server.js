@@ -362,7 +362,7 @@ app.use(
   express.static(
     require("path").join(
       process.env.FRONTEND_PUBLIC_DIR || "/home/ubuntu/sk-intranet-frontend/public",
-      "emp-images"
+      "employee-images"
     )
   )
 );

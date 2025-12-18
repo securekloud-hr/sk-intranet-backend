@@ -23,7 +23,7 @@ const FRONTEND_PUBLIC_DIR =
   process.env.FRONTEND_PUBLIC_DIR ||
   String.raw`F:\Securekloud Intranet\sk-intranet-frontend\public`;
 
-const uploadDir = path.join(FRONTEND_PUBLIC_DIR, "emp-images");
+const uploadDir = path.join(FRONTEND_PUBLIC_DIR, "employee-images");
 
 // ✅ Create folder if missing
 if (!fs.existsSync(uploadDir)) {
@@ -92,7 +92,7 @@ router.post("/upload", (req, res) => {
 
       const empId = (req.body.empId || "").trim();
 
-      const avatarUrl = `/emp-images/${req.file.filename}`;
+      const avatarUrl = `/employee-images/${req.file.filename}`;
 
       console.log("✅ Profile Image Saved:", req.file.filename);
       console.log("📁 Location:", path.join(uploadDir, req.file.filename));
