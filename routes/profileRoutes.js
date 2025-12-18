@@ -9,10 +9,13 @@ const Employee = require("../models/EmployeeDirectory");
 const router = express.Router();
 
 /**
- * ✅ Save into FRONTEND public folder (Windows)
- * F:\Securekloud Intranet\sk-intranet-frontend\public\profile-images
+ * ✅ Save into FRONTEND public folder
+ * Windows:
+ * F:\Securekloud Intranet\sk-intranet-frontend\public
  *
- * Best practice: use env var so you can change per machine (Windows/EC2)
+ * EC2 example:
+ * /home/ubuntu/sk-intranet-frontend/public
+ *
  * Set in .env:
  * FRONTEND_PUBLIC_DIR=F:\Securekloud Intranet\sk-intranet-frontend\public
  */
@@ -22,36 +25,52 @@ const FRONTEND_PUBLIC_DIR =
 
 const uploadDir = path.join(FRONTEND_PUBLIC_DIR, "emp-images");
 
-// Create folder if missing
+// ✅ Create folder if missing
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ⭐ Multer Storage (each user gets separate file using email)
+// ==============================
+// 📦 Multer Storage
+// ==============================
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const email = (req.body.email || "").trim().toLowerCase();
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
 
-    if (!email) {
-      return cb(new Error("Missing email for profile image upload"), "");
+  filename: (req, file, cb) => {
+    const empId = (req.body.empId || "").trim();
+    const employeeName = (req.body.employeeName || "").trim();
+
+    if (!empId || !employeeName) {
+      return cb(
+        new Error("empId and employeeName are required for profile image upload"),
+        ""
+      );
     }
 
-    const safeEmail = email.replace(/[^a-zA-Z0-9@._-]/g, "_");
-    const ext = path.extname(file.originalname) || ".png";
+    // Keep spaces, normalize extra spaces
+    const cleanName = employeeName.replace(/\s+/g, " ");
 
-    console.log("📸 Saving profile image for:", email, "as", `${safeEmail}${ext}`);
-    cb(null, `${safeEmail}${ext}`);
+    const ext = path.extname(file.originalname) || ".jpg";
+    const finalName = `${empId}-${cleanName}${ext}`;
+
+    console.log("📸 Saving profile image as:", finalName);
+
+    cb(null, finalName);
   },
 });
 
 const upload = multer({ storage });
 
 /**
- * ✅ POST /api/profile/upload
+ * ==============================
+ * 📤 POST /api/profile/upload
  * FormData:
- * - avatar: file
- * - email: string
+ * - avatar (file)
+ * - empId
+ * - employeeName
+ * ==============================
  */
 router.post("/upload", (req, res) => {
   upload.single("avatar")(req, res, async (err) => {
@@ -65,37 +84,37 @@ router.post("/upload", (req, res) => {
 
     try {
       if (!req.file) {
-        return res.status(400).json({ success: false, error: "No file uploaded" });
+        return res.status(400).json({
+          success: false,
+          error: "No file uploaded",
+        });
       }
 
-      const email = (req.body.email || "").trim().toLowerCase();
+      const empId = (req.body.empId || "").trim();
 
-      /**
-       * ✅ IMPORTANT:
-       * Since the file is inside FRONTEND public folder,
-       * the URL should be relative and served by the frontend:
-       */
       const avatarUrl = `/emp-images/${req.file.filename}`;
 
-      console.log("✅ Profile Image Saved →", req.file.filename, "for email:", email);
-      console.log("📁 Saved at:", path.join(uploadDir, req.file.filename));
+      console.log("✅ Profile Image Saved:", req.file.filename);
+      console.log("📁 Location:", path.join(uploadDir, req.file.filename));
 
-      // ✅ Update EmployeeDirectory record
-      if (email) {
+      // ✅ Update EmployeeDirectory using EmpID
+      if (empId) {
         const result = await Employee.updateOne(
-          {
-            $or: [
-              { Email: { $regex: new RegExp(`^${email}$`, "i") } },
-              { OfficialEmail: { $regex: new RegExp(`^${email}$`, "i") } },
-            ],
-          },
+          { EmpID: empId },
           { $set: { ProfileImage: avatarUrl } }
         );
 
-        console.log("🧩 EmployeeDirectory ProfileImage update:", result?.matchedCount, "matched");
+        console.log(
+          "🧩 EmployeeDirectory update:",
+          result.matchedCount,
+          "matched"
+        );
       }
 
-      return res.json({ success: true, avatarUrl });
+      return res.json({
+        success: true,
+        avatarUrl,
+      });
     } catch (e) {
       console.error("❌ Upload failure:", e);
       return res.status(500).json({
