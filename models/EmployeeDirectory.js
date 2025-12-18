@@ -9,6 +9,8 @@ const EmployeeSchema = new mongoose.Schema({
 
   // ✅ Reporting Manager NAME (from Excel)
   ReportingManager: String,
+  ProfileImage: { type: String, default: "" },
+
 
   OfficialEmail: String,
   PersonalEmailID: String,

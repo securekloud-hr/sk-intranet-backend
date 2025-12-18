@@ -4,10 +4,23 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+const Employee = require("../models/EmployeeDirectory");
+
 const router = express.Router();
 
-// Folder: backend/public/profile-images
-const uploadDir = path.join(__dirname, "..", "public", "profile-images");
+/**
+ * ✅ Save into FRONTEND public folder (Windows)
+ * F:\Securekloud Intranet\sk-intranet-frontend\public\profile-images
+ *
+ * Best practice: use env var so you can change per machine (Windows/EC2)
+ * Set in .env:
+ * FRONTEND_PUBLIC_DIR=F:\Securekloud Intranet\sk-intranet-frontend\public
+ */
+const FRONTEND_PUBLIC_DIR =
+  process.env.FRONTEND_PUBLIC_DIR ||
+  String.raw`F:\Securekloud Intranet\sk-intranet-frontend\public`;
+
+const uploadDir = path.join(FRONTEND_PUBLIC_DIR, "emp-images");
 
 // Create folder if missing
 if (!fs.existsSync(uploadDir)) {
@@ -16,33 +29,32 @@ if (!fs.existsSync(uploadDir)) {
 
 // ⭐ Multer Storage (each user gets separate file using email)
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const email = (req.body.email || "").trim().toLowerCase();
 
-    // ❌ Prevent same-name file like "user.png"
     if (!email) {
       return cb(new Error("Missing email for profile image upload"), "");
     }
 
-    // Make email safe for filename
     const safeEmail = email.replace(/[^a-zA-Z0-9@._-]/g, "_");
     const ext = path.extname(file.originalname) || ".png";
 
     console.log("📸 Saving profile image for:", email, "as", `${safeEmail}${ext}`);
-
-    // Final filename → each user gets their own file
     cb(null, `${safeEmail}${ext}`);
   },
 });
 
 const upload = multer({ storage });
 
-// ⭐ POST /api/profile/upload
+/**
+ * ✅ POST /api/profile/upload
+ * FormData:
+ * - avatar: file
+ * - email: string
+ */
 router.post("/upload", (req, res) => {
-  upload.single("avatar")(req, res, (err) => {
+  upload.single("avatar")(req, res, async (err) => {
     if (err) {
       console.error("❌ Multer error:", err);
       return res.status(400).json({
@@ -53,27 +65,39 @@ router.post("/upload", (req, res) => {
 
     try {
       if (!req.file) {
-        return res
-          .status(400)
-          .json({ success: false, error: "No file uploaded" });
+        return res.status(400).json({ success: false, error: "No file uploaded" });
       }
 
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
-      const avatarUrl = `${baseUrl}/profile-images/${req.file.filename}`;
+      const email = (req.body.email || "").trim().toLowerCase();
 
-      console.log(
-        "✅ Profile Image Saved →",
-        req.file.filename,
-        "for email:",
-        req.body.email
-      );
+      /**
+       * ✅ IMPORTANT:
+       * Since the file is inside FRONTEND public folder,
+       * the URL should be relative and served by the frontend:
+       */
+      const avatarUrl = `/emp-images/${req.file.filename}`;
 
-      return res.json({
-        success: true,
-        avatarUrl,
-      });
-    } catch (err) {
-      console.error("❌ Upload failure:", err);
+      console.log("✅ Profile Image Saved →", req.file.filename, "for email:", email);
+      console.log("📁 Saved at:", path.join(uploadDir, req.file.filename));
+
+      // ✅ Update EmployeeDirectory record
+      if (email) {
+        const result = await Employee.updateOne(
+          {
+            $or: [
+              { Email: { $regex: new RegExp(`^${email}$`, "i") } },
+              { OfficialEmail: { $regex: new RegExp(`^${email}$`, "i") } },
+            ],
+          },
+          { $set: { ProfileImage: avatarUrl } }
+        );
+
+        console.log("🧩 EmployeeDirectory ProfileImage update:", result?.matchedCount, "matched");
+      }
+
+      return res.json({ success: true, avatarUrl });
+    } catch (e) {
+      console.error("❌ Upload failure:", e);
       return res.status(500).json({
         success: false,
         error: "Upload failed, please try again",

@@ -182,6 +182,7 @@ router.get("/", async (req, res) => {
       OfficialEmail: emp.OfficialEmail || "",
       PersonalEmailID: emp.PersonalEmailID || "",
       Email: emp.Email || "",
+      ProfileImage: emp.ProfileImage || "", 
       Birthday: emp.Birthday || "",
       Tech1: emp.Tech1 || "",
       Tech2: emp.Tech2 || "",
@@ -267,5 +268,153 @@ router.put("/by-email/:email", async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
+
+
+// =============================
+// 📤 Upload Leave Balances ONLY
+// =============================
+router.post("/upload-leaves", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+    let updated = 0;
+    let notFound = 0;
+    const errors = [];
+
+    for (let i = 0; i < rawRows.length; i++) {
+      const row = rawRows[i];
+
+      const keys = Object.keys(row).reduce((acc, k) => {
+        acc[normalizeKey(k)] = row[k];
+        return acc;
+      }, {});
+
+      const empId = keys["empid"] || keys["emp id"];
+      if (!empId) {
+        errors.push({ row: i + 2, error: "EmpID missing" });
+        continue;
+      }
+
+      const updateDoc = {
+        EarnedLeave: toNullableNumber(keys["earnedleave"] ?? keys["earned leave"]),
+        CasualLeave: toNullableNumber(keys["casualleave"] ?? keys["casual leave"]),
+        SickLeave: toNullableNumber(keys["sickleave"] ?? keys["sick leave"]),
+        MarriageLeave: toNullableNumber(keys["marriageleave"] ?? keys["marriage leave"]),
+        PaternityLeave: toNullableNumber(keys["paternityleave"] ?? keys["paternity leave"]),
+      };
+
+      // remove empty values so they don’t overwrite
+      Object.keys(updateDoc).forEach(
+        (k) => updateDoc[k] === null && delete updateDoc[k]
+      );
+
+      const result = await Employee.updateOne(
+        { EmpID: String(empId).trim() },
+        { $set: updateDoc }
+      );
+
+      if (result.matchedCount === 0) notFound++;
+      else updated++;
+    }
+
+    return res.json({
+      success: true,
+      message: "Leave balances updated",
+      updated,
+      notFound,
+      errors,
+      total: rawRows.length,
+    });
+  } catch (err) {
+    console.error("❌ Leave upload error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+// =============================
+// 📤 Upload Leave Balances ONLY (match by Employee_ID / EmpID)
+// =============================
+router.post("/upload-leaves", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+    let updated = 0;
+    let notFound = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      const keys = Object.keys(row).reduce((acc, k) => {
+        acc[normalizeKey(k)] = row[k];
+        return acc;
+      }, {});
+
+      // ✅ Your sheet uses "Employee_ID"
+      const empIdRaw =
+        keys["employee_id"] ||
+        keys["employee id"] ||
+        keys["empid"] ||
+        keys["emp id"];
+
+      if (!empIdRaw) {
+        errors.push({ row: i + 2, error: "Employee_ID missing" });
+        continue;
+      }
+
+      const empId = String(empIdRaw).trim();
+
+      // ✅ Your sheet has "Marriagne Leave" typo - handle it also
+      const updateDoc = {
+        CasualLeave: toNullableNumber(keys["casual leave"] ?? keys["casualleave"]),
+        EarnedLeave: toNullableNumber(keys["earned leave"] ?? keys["earnedleave"]),
+        SickLeave: toNullableNumber(keys["sick leave"] ?? keys["sickleave"]),
+        MarriageLeave: toNullableNumber(
+          keys["marriage leave"] ??
+          keys["marriageleave"] ??
+          keys["marriagne leave"] // <-- IMPORTANT for your sheet
+        ),
+        PaternityLeave: toNullableNumber(keys["paternity leave"] ?? keys["paternityleave"]),
+      };
+
+      // remove nulls so blank cells don't overwrite existing values
+      Object.keys(updateDoc).forEach((k) => updateDoc[k] == null && delete updateDoc[k]);
+
+      const result = await Employee.updateOne(
+        { EmpID: empId },
+        { $set: updateDoc }
+      );
+
+      if (result.matchedCount === 0) notFound++;
+      else updated++;
+    }
+
+    return res.json({
+      success: true,
+      message: "✅ Leave balances updated",
+      updated,
+      notFound,
+      errors,
+      total: rows.length,
+    });
+  } catch (err) {
+    console.error("❌ Leave upload error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 module.exports = router;
