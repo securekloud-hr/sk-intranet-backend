@@ -40,9 +40,6 @@ const internalJobsRoutes = require("./routes/internalJobs");
 const jobApplyRoutes = require("./routes/jobApplyRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const birthdayRoutes = require("./routes/birthdayRoutes");
-const queryRoutes = require("./routes/queryRoutes");
-
-
 
 const app = express();
 
