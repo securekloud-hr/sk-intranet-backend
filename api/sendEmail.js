@@ -11,7 +11,8 @@ module.exports = async function (req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const { name, email, message, type } = req.body;
+  // ✅ Accept subject from frontend
+  const { name, email, subject, message, type } = req.body;
 
   if (!name || !email || !message || !type) {
     return res.status(400).json({ error: "All fields are required" });
@@ -20,7 +21,13 @@ module.exports = async function (req, res) {
   try {
     const safeType = (type || "").toString().trim().toLowerCase();
 
-    // ✅ L&D types that should go into SkillMailLog (same schema)
+    // ✅ Decide FINAL subject (user-entered OR fallback)
+    const finalSubject =
+      subject && subject.trim().length > 0
+        ? subject.trim()
+        : `New ${safeType.toUpperCase()} Request from ${name}`;
+
+    // ✅ L&D types that should go into SkillMailLog
     const isLearningMail = ["ld-skill", "ld-certification"].includes(safeType);
 
     // Gmail SMTP transporter
@@ -43,7 +50,7 @@ module.exports = async function (req, res) {
       recipient = process.env.FINANCE_EMAIL;
     } else if (isLearningMail) {
       recipient = process.env.HR_EMAIL;
-      // OR recipient = process.env.LD_EMAIL if you have a separate email
+      // OR process.env.LD_EMAIL
     }
 
     // ✅ Generate PDF
@@ -61,33 +68,35 @@ module.exports = async function (req, res) {
     doc.fontSize(12).text(`Name: ${name}`);
     doc.text(`Email: ${email}`);
     doc.text(`Type: ${safeType}`);
+    doc.text(`Subject: ${finalSubject}`);
     doc.moveDown();
     doc.text(`Message: ${message}`, { align: "left" });
     doc.end();
 
-    const subject = `New ${safeType.toUpperCase()} Request from ${name}`;
-
-    // ✅ Save BOTH skills + certifications into same SkillMailLog schema
+    // ✅ Save Learning mails to DB
     if (isLearningMail) {
       await SkillMailLog.create({
         name,
         email,
-        subject,
+        subject: finalSubject,
         message,
         type: safeType,
       });
     }
 
-    // Send mail
+    // ✅ Send email
     await transporter.sendMail({
       from: `"${name}" <${process.env.EMAIL_USER}>`,
       to: recipient,
-      subject,
+      subject: finalSubject,
       text: `
 Name: ${name}
 Email: ${email}
 Type: ${safeType}
-Message: ${message}
+Subject: ${finalSubject}
+
+Message:
+${message}
       `,
       attachments: [
         {
@@ -98,9 +107,13 @@ Message: ${message}
       ],
     });
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Email sent successfully with PDF!" });
+    // (Optional but recommended) Cleanup PDF after send
+    fs.unlink(pdfPath, () => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "Email sent successfully with subject & PDF!",
+    });
   } catch (error) {
     console.error("Email error:", error);
     return res.status(500).json({ error: "Failed to send email" });

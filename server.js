@@ -40,6 +40,9 @@ const internalJobsRoutes = require("./routes/internalJobs");
 const jobApplyRoutes = require("./routes/jobApplyRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const birthdayRoutes = require("./routes/birthdayRoutes");
+const queryRoutes = require("./routes/queryRoutes");
+
+
 
 const app = express();
 
@@ -77,11 +80,13 @@ mongoose
 const querySchema = new mongoose.Schema({
   name: String,
   email: String,
+  subject: String,   // ✅ ADD THIS
   message: String,
-  type: String, // 👈 added so you can see ld-skill / ticket / etc
+  type: String,
   timestamp: { type: Date, default: Date.now },
   status: { type: String, default: "pending" },
 });
+
 const Query = mongoose.model("Query", querySchema);
 
 // ---------- Gmail transporter ----------
@@ -357,6 +362,7 @@ app.use("/api/jobs", jobApplyRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/learning", learningRoutes);
 app.use("/api/birthdays", birthdayRoutes);
+app.use("/api/queries", queryRoutes);
 app.use(
   "/emp-images",
   express.static(

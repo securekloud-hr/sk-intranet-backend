@@ -79,92 +79,67 @@ const joinList = (arr) => (Array.isArray(arr) ? arr.join(", ") : "");
 // =============================
 // 📤 Excel Upload → MongoDB
 // =============================
-router.post("/upload", upload.single("file"), async (req, res) => {
+router.post("/upload-leaves", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: "No file uploaded" });
     }
 
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames.find((name) =>
-      name.toLowerCase().includes("emp directory")
-    );
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-    if (!sheetName) {
-      return res.status(400).json({
-        success: false,
-        error: "Employee Directory sheet not found in Excel file",
-      });
-    }
+    let updated = 0;
+    let notFound = 0;
+    const errors = [];
 
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet);
-
-    const data = rows.map((row) => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const keys = Object.keys(row).reduce((acc, k) => {
         acc[normalizeKey(k)] = row[k];
         return acc;
       }, {});
 
-      return {
-        EmpID: keys["emp id"] || "",
-        EmployeeName: keys["associate name"] || "",
-        Department: keys["department"] || keys["dept"] || "",
-        PhoneNumber: keys["contact no"] || "",
-        Birthday: keys["birthday"] || "",
+      const empId = String(
+        keys["employee_id"] || keys["employee id"] || keys["empid"] || keys["emp id"] || ""
+      ).trim();
 
-        CurrentAddress: keys["current address"] || "",
-        PermanentAddress: keys["permanent address"] || "",
-        PAN: keys["pan"] || "",
-        Aadhar: keys["aadhar"] || "",
-        BloodGroup: keys["blood group"] || "",
-        EmergencyContact: keys["emergency contact no"] || "",
+      if (!empId) {
+        errors.push({ row: i + 2, error: "Employee_ID missing" });
+        continue;
+      }
 
-        // ✅ Excel column "Designation"
-        Designation: keys["designation"] || "",
-
-        // ✅ Official / Work email
-       
-
-        // ✅ Personal email
-        PersonalEmailID: keys["personal email id"] || "",
-
-        // ✅ Legacy combined Email
-        Email: keys["e mail"] || keys["email id"] || keys["email"] || "",
-
-        // ✅ Stored in DB for OrgStructure (DO NOT SHOW IN UI)
-        ReportingManager: (
-          keys["reporting manager"] ||
-          keys["reporting manager name"] ||
-          keys["reporting to"] ||
-          ""
-        )
-          .toString()
-          .trim(),
-
-        Tech1: keys["tech 1"] || keys["tech1"] || keys["tech. 1"] || "",
-        Tech2: keys["tech 2"] || keys["tech2"] || keys["tech. 2"] || "",
-        SpecialSkill: keys["special skill"] || "",
-
-        // ✅ Leaves (NO empty string; store number or null)
-        EarnedLeave: toNullableNumber(keys["earnedleave"] ?? keys["earned leave"]),
-        CasualLeave: toNullableNumber(keys["casualleave"] ?? keys["casual leave"]),
-        SickLeave: toNullableNumber(keys["sickleave"] ?? keys["sick leave"]),
-        MarriageLeave: toNullableNumber(keys["marriageleave"] ?? keys["marriage leave"]),
-        PaternityLeave: toNullableNumber(keys["paternityleave"] ?? keys["paternity leave"]),
+      // ✅ Include MaternityLeave and handle MarriageLeave typo
+      const updateDoc = {
+        EarnedLeave: toNullableNumber(keys["earned leave"] ?? keys["earnedleave"]),
+        CasualLeave: toNullableNumber(keys["casual leave"] ?? keys["casualleave"]),
+        SickLeave: toNullableNumber(keys["sick leave"] ?? keys["sickleave"]),
+        MarriageLeave: toNullableNumber(
+          keys["marriage leave"] ?? keys["marriageleave"] ?? keys["marriagne leave"]
+        ),
+        PaternityLeave: toNullableNumber(keys["paternity leave"] ?? keys["paternityleave"]),
+        MaternityLeave: toNullableNumber(keys["maternity leave"] ?? keys["maternityleave"]),
       };
-    });
 
-    await Employee.deleteMany({});
-    await Employee.insertMany(data);
+      // remove nulls so blank cells don't overwrite existing values
+      Object.keys(updateDoc).forEach((k) => updateDoc[k] == null && delete updateDoc[k]);
+
+      const result = await Employee.updateOne({ EmpID: empId }, { $set: updateDoc });
+
+      if (result.matchedCount === 0) notFound++;
+      else updated++;
+    }
 
     return res.json({
       success: true,
-      message: "✅ Employee data uploaded successfully!",
-      count: data.length,
+      message: "✅ Leave balances updated",
+      updated,
+      notFound,
+      errors,
+      total: rows.length,
     });
   } catch (err) {
-    console.error("❌ Upload error:", err);
+    console.error("❌ Leave upload error:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -297,6 +272,8 @@ router.get("/by-email/:email", async (req, res) => {
         SickLeave: toPlainNumberOrNull(employee.SickLeave),
         MarriageLeave: toPlainNumberOrNull(employee.MarriageLeave),
         PaternityLeave: toPlainNumberOrNull(employee.PaternityLeave),
+        MaternityLeave: toPlainNumberOrNull(employee.MaternityLeave),
+
       },
     });
   } catch (err) {
@@ -448,6 +425,7 @@ router.post("/upload-leaves", upload.single("file"), async (req, res) => {
           keys["marriagne leave"] // <-- IMPORTANT for your sheet
         ),
         PaternityLeave: toNullableNumber(keys["paternity leave"] ?? keys["paternityleave"]),
+        MaternityLeave: toNullableNumber(keys["maternity leave"] ?? keys["maternityleave"]),
       };
 
       // remove nulls so blank cells don't overwrite existing values

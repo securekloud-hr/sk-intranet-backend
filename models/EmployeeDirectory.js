@@ -34,6 +34,7 @@ const EmployeeSchema = new mongoose.Schema({
   SickLeave: Number,
   MarriageLeave: Number,
   PaternityLeave: Number,
+  MaternityLeave: Number,
 
 });
 
