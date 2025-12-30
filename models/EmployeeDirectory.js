@@ -35,6 +35,13 @@ const EmployeeSchema = new mongoose.Schema({
   MarriageLeave: Number,
   PaternityLeave: Number,
   MaternityLeave: Number,
+  role: {
+  type: String,
+  enum: ["Admin", "Manager", "User", "HR", "IT", "Finance"],
+
+  default: "User",
+},
+
 
 });
 

@@ -11,7 +11,7 @@ module.exports = async function (req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  // ✅ Accept subject from frontend
+  // ✅ Accept data from frontend
   const { name, email, subject, message, type } = req.body;
 
   if (!name || !email || !message || !type) {
@@ -19,18 +19,18 @@ module.exports = async function (req, res) {
   }
 
   try {
-    const safeType = (type || "").toString().trim().toLowerCase();
+    const safeType = String(type).trim().toLowerCase();
 
-    // ✅ Decide FINAL subject (user-entered OR fallback)
+    // ✅ Decide final subject
     const finalSubject =
       subject && subject.trim().length > 0
         ? subject.trim()
         : `New ${safeType.toUpperCase()} Request from ${name}`;
 
-    // ✅ L&D types that should go into SkillMailLog
+    // ✅ L&D mails only
     const isLearningMail = ["ld-skill", "ld-certification"].includes(safeType);
 
-    // Gmail SMTP transporter
+    // ✅ Mail transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -39,7 +39,7 @@ module.exports = async function (req, res) {
       },
     });
 
-    // Decide recipient
+    // ✅ Decide recipient
     let recipient = process.env.DEFAULT_RECIPIENT;
 
     if (safeType === "hr" || safeType === "query") {
@@ -50,7 +50,6 @@ module.exports = async function (req, res) {
       recipient = process.env.FINANCE_EMAIL;
     } else if (isLearningMail) {
       recipient = process.env.HR_EMAIL;
-      // OR process.env.LD_EMAIL
     }
 
     // ✅ Generate PDF
@@ -70,10 +69,10 @@ module.exports = async function (req, res) {
     doc.text(`Type: ${safeType}`);
     doc.text(`Subject: ${finalSubject}`);
     doc.moveDown();
-    doc.text(`Message: ${message}`, { align: "left" });
+    doc.text(`Message:\n${message}`);
     doc.end();
 
-    // ✅ Save Learning mails to DB
+    // ✅ Save ONLY learning mails
     if (isLearningMail) {
       await SkillMailLog.create({
         name,
@@ -107,15 +106,15 @@ ${message}
       ],
     });
 
-    // (Optional but recommended) Cleanup PDF after send
+    // ✅ Cleanup temp PDF
     fs.unlink(pdfPath, () => {});
 
     return res.status(200).json({
       success: true,
-      message: "Email sent successfully with subject & PDF!",
+      message: "Email sent successfully",
     });
   } catch (error) {
-    console.error("Email error:", error);
+    console.error("❌ Email error:", error);
     return res.status(500).json({ error: "Failed to send email" });
   }
 };

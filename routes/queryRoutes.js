@@ -25,7 +25,7 @@ router.get("/", async (req, res) => {
       email: email.toLowerCase(),
     })
       .sort({ timestamp: -1 })
-      .select("_id type message status timestamp");
+      .select("_id type subject message status timestamp"); // ✅ FIXED
 
     res.json({
       success: true,

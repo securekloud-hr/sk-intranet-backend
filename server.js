@@ -128,16 +128,19 @@ app.post("/api/sendEmail", async (req, res) => {
         message,
         type,
       });
-    } else {
-      // 🔹 All other queries (HR / IT / Payroll / generic) → Query collection
-      console.log("🟢 Saving to Query");
-      await Query.create({
-        name,
-        email,
-        message,
-        type,
-      });
-    }
+   } else {
+  // 🔹 All other queries (HR / IT / Payroll / generic) → Query collection
+  console.log("🟢 Saving to Query");
+  await Query.create({
+    name,
+    email,
+    subject: finalSubject,
+    message,
+    type,
+  });
+} // ✅ THIS LINE WAS MISSING
+
+
 
     // Decide which team to send to
     let toAddress = process.env.HR_EMAIL || process.env.DEFAULT_RECIPIENT;

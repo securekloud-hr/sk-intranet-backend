@@ -229,6 +229,8 @@ router.get("/", async (req, res) => {
       SickLeave: emp.SickLeave ?? null,
       MarriageLeave: emp.MarriageLeave ?? null,
       PaternityLeave: emp.PaternityLeave ?? null,
+      role: emp.role || "User",
+
     }));
 
     return res.json(sanitized);
