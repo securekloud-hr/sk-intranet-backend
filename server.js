@@ -40,6 +40,8 @@ const internalJobsRoutes = require("./routes/internalJobs");
 const jobApplyRoutes = require("./routes/jobApplyRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const birthdayRoutes = require("./routes/birthdayRoutes");
+const queryRoutes = require("./routes/queryRoutes");
+
 
 const app = express();
 
@@ -384,4 +386,4 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
-//11
+//
