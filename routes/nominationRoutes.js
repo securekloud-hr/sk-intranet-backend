@@ -80,16 +80,7 @@ function normalizeKeys(obj) {
         </table>
       `;
     };
-    function normalizeKeys(data) {
-  if (!data || typeof data !== "object") return data;
-  const normalized = {};
-  for (const [key, value] of Object.entries(data)) {
-    const newKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-    normalized[newKey] =
-      typeof value === "object" ? normalizeKeys(value) : value;
-  }
-  return normalized;
-}
+  
 
 
     // -------------------------
@@ -118,48 +109,231 @@ function normalizeKeys(obj) {
       `;
     }
 
-    // 2) Contract Invoice Template
-    else if (type === "Contract Invoice Template") {
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: auto;">
-          <h2 style="text-align:center; color:#2E86C1;">Tax Invoice</h2>
-          <h3>Pay To:</h3>
-          <p><strong>Invoice Number:</strong> ${formData.invoiceNumber}</p>
-          <p><strong>Name of the Consultant:</strong> ${formData.consultantName}</p>
-          <p><strong>Invoice Date:</strong> ${formData.invoiceDate}</p>
-          <p><strong>Address:</strong> ${formData.consultantAddress}</p>
-          <p><strong>Mobile Number:</strong> ${formData.consultantMobile}</p>
+ else if (type === "Contract Invoice Template") {
+  // Calculate total from services array
+  const services = formData.services || [];
+  const totalAmount = services.reduce((sum, service) => sum + (Number(service.amount) || 0), 0);
+  
+  html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tax Invoice</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f9f9f9;
+            }
+            .invoice-container {
+                max-width: 800px;
+                margin: 0 auto;
+                background-color: white;
+                padding: 30px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            h2 {
+                text-align: center;
+                color: #2E86C1;
+                border-bottom: 3px solid #2E86C1;
+                padding-bottom: 10px;
+            }
+            h3 {
+                color: #34495E;
+                margin-top: 25px;
+                border-bottom: 1px solid #BDC3C7;
+                padding-bottom: 5px;
+            }
+            .detail-row {
+                display: flex;
+                margin: 8px 0;
+            }
+            .detail-label {
+                font-weight: bold;
+                width: 180px;
+                color: #555;
+            }
+            .detail-value {
+                flex: 1;
+                color: #333;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+            }
+            th {
+                background-color: #2E86C1;
+                color: white;
+                font-weight: bold;
+            }
+            tr:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+            .total-row {
+                font-weight: bold;
+                font-size: 18px;
+                text-align: right;
+                margin: 20px 0;
+                padding: 15px;
+                background-color: #E8F8F5;
+                border: 2px solid #2E86C1;
+            }
+            .signature-section {
+                margin-top: 30px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                background-color: #FDFEFE;
+            }
+            .signature-image {
+                max-width: 250px;
+                max-height: 100px;
+                border: 1px solid #ccc;
+                padding: 5px;
+                background-color: white;
+            }
+            .note {
+                margin-top: 20px;
+                padding: 10px;
+                background-color: #FFF9E6;
+                border-left: 4px solid #F39C12;
+                font-style: italic;
+                font-size: 12px;
+            }
+            .footer {
+                margin-top: 40px;
+                text-align: center;
+                font-size: 11px;
+                color: #7F8C8D;
+                border-top: 1px solid #ddd;
+                padding-top: 15px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="invoice-container">
+            <h2>TAX INVOICE</h2>
+            
+            <h3>Invoice Details</h3>
+            <div class="detail-row">
+                <div class="detail-label">Invoice Number:</div>
+                <div class="detail-value">${formData.invoice_number || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Invoice Date:</div>
+                <div class="detail-value">${formData.invoice_date || "N/A"}</div>
+            </div>
+            
+            <h3>Pay To:</h3>
+            <div class="detail-row">
+                <div class="detail-label">Consultant Name:</div>
+                <div class="detail-value">${formData.consultant_name || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Address:</div>
+                <div class="detail-value">${formData.consultant_address || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Mobile Number:</div>
+                <div class="detail-value">${formData.consultant_mobile || "N/A"}</div>
+            </div>
 
-          <h3>Bill To:</h3>
-          <p>SecureKloud Technologies Limited,<br/>
-          5th Floor, No. 37 & 38, ASV Ramana Towers,<br/>
-          Venkat Narayana Road, T Nagar,<br/>
-          Chennai – 600017.</p>
+            <h3>Bill To:</h3>
+            <p style="margin-left: 20px; line-height: 1.6;">
+                <strong>SecureKloud Technologies Limited</strong><br/>
+                5th Floor, No. 37 & 38, ASV Ramana Towers<br/>
+                Venkat Narayana Road, T Nagar<br/>
+                Chennai – 600017
+            </p>
 
-          <table border="1" cellspacing="0" cellpadding="6" style="border-collapse: collapse; width: 100%; margin:20px 0;">
-            <tr style="background:#f2f2f2;">
-              <th>S No.</th><th>Service Description</th><th>Hours</th><th>Rate - INR</th><th>Amount - INR</th>
-            </tr>
-            <tr>
-              <td>1</td>
-              <td>${formData.serviceDescription}</td>
-              <td>${formData.hours}</td>
-              <td>${formData.rate}</td>
-              <td>${formData.amount}</td>
-            </tr>
-          </table>
+            <h3>Services Rendered</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">S.No</th>
+                        <th style="width: 40%;">Service Description</th>
+                        <th style="width: 15%;">Hours</th>
+                        <th style="width: 18%;">Rate (₹)</th>
+                        <th style="width: 19%;">Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${services.map((row, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${row.description || "N/A"}</td>
+                            <td>${row.hours || 0}</td>
+                            <td>₹${Number(row.rate || 0).toLocaleString('en-IN')}</td>
+                            <td>₹${Number(row.amount || 0).toLocaleString('en-IN')}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
 
-          <p><strong>Total Amount:</strong> ${formData.amount}</p>
-          <h3>Bank Details</h3>
-          <p><strong>Bank Name:</strong> ${formData.bankName}</p>
-          <p><strong>Bank Branch:</strong> ${formData.bankBranch}</p>
-          <p><strong>IFSC Code:</strong> ${formData.ifscCode}</p>
-          <p><strong>Account Number:</strong> ${formData.accountNumber}</p>
-          <p><strong>PAN Card Number:</strong> ${formData.panNumber}</p>
+            <div class="total-row">
+                Total Amount: ₹${totalAmount.toLocaleString('en-IN')}
+            </div>
+
+            <h3>Bank Details</h3>
+            <div class="detail-row">
+                <div class="detail-label">Bank Name:</div>
+                <div class="detail-value">${formData.bank_name || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Bank Branch:</div>
+                <div class="detail-value">${formData.bank_branch || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">IFSC Code:</div>
+                <div class="detail-value">${formData.ifsc_code || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Account Number:</div>
+                <div class="detail-value">${formData.account_number || "N/A"}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">PAN Card Number:</div>
+                <div class="detail-value">${formData.pan_number || "N/A"}</div>
+            </div>
+
+            ${
+              formData.signature && formData.signature.startsWith("data:image/")
+                ? `<div class="signature-section">
+                     <h3>Signature</h3>
+                     <img src="${formData.signature}" class="signature-image" alt="Signature" />
+                     <p style="margin-top: 10px; font-size: 12px; color: #555;">
+                       Digitally signed by ${formData.consultant_name || "Consultant"}
+                     </p>
+                   </div>`
+                : `<div class="signature-section">
+                     <h3>Signature</h3>
+                     <div style="border-bottom: 2px solid #333; width: 250px; margin-top: 40px;"></div>
+                     <p style="margin-top: 5px; font-size: 12px; color: #555;">
+                       Authorized Signatory
+                     </p>
+                   </div>`
+            }
+
+            <div class="note">
+                <strong>Note:</strong> I am below the GST threshold of 20 Lakhs per annum.
+            </div>
+
+            <div class="footer">
+                This invoice was generated automatically from SecureKloud Intranet Portal<br/>
+                For any queries, please contact the Finance Department
+            </div>
         </div>
-      `;
-    }
-
+    </body>
+    </html>
+  `;
+}
     // 3) Contract Timesheet Template
     else if (type === "Contract Timesheet Template") {
       html = `
@@ -192,15 +366,241 @@ function normalizeKeys(obj) {
     }
 
     // 4) Expense Reimbursement
-    else if (type === "Expense Reimbursement") {
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: auto;">
-          <h2 style="text-align:center; color:#27AE60;">Expense Reimbursement</h2>
-          ${buildHtmlTable(formData)}
-        </div>
-      `;
-    }
+  else if (type === "Expense Reimbursement Form") {
+  const expenses = formData.expenses || [];
+  const subtotal = Number(formData.subtotal) || 0;
+  const cashAdvance = Number(formData.cash_advance) || 0;
+  const total = Number(formData.total) || 0;
 
+  html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Expense Reimbursement Form</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 900px;
+                margin: 0 auto;
+                background-color: white;
+                padding: 30px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            h2 {
+                text-align: center;
+                color: #2E86C1;
+                border-bottom: 3px solid #2E86C1;
+                padding-bottom: 10px;
+            }
+            .detail-section {
+                margin: 20px 0;
+            }
+            .detail-row {
+                display: flex;
+                margin: 8px 0;
+            }
+            .detail-label {
+                font-weight: bold;
+                width: 200px;
+                color: #555;
+            }
+            .detail-value {
+                flex: 1;
+                color: #333;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 10px;
+                text-align: left;
+            }
+            th {
+                background-color: #2E86C1;
+                color: white;
+            }
+            tr:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+            .calculation-box {
+                margin: 20px 0;
+                padding: 15px;
+                background-color: #E8F8F5;
+                border: 2px solid #2E86C1;
+            }
+            .calculation-row {
+                display: flex;
+                justify-content: space-between;
+                margin: 8px 0;
+                font-size: 16px;
+            }
+            .total-row {
+                font-weight: bold;
+                font-size: 18px;
+                border-top: 2px solid #2E86C1;
+                padding-top: 10px;
+                margin-top: 10px;
+            }
+            .signature-section {
+                display: flex;
+                justify-content: space-between;
+                margin: 30px 0;
+            }
+            .signature-box {
+                width: 45%;
+                border: 1px solid #ddd;
+                padding: 15px;
+                background-color: #FDFEFE;
+            }
+            .signature-image {
+                max-width: 100%;
+                max-height: 80px;
+                border: 1px solid #ccc;
+                padding: 5px;
+                margin: 10px 0;
+            }
+            .note {
+                background-color: #FFF9E6;
+                border-left: 4px solid #F39C12;
+                padding: 10px;
+                margin: 20px 0;
+                font-style: italic;
+            }
+            .footer {
+                margin-top: 30px;
+                text-align: center;
+                font-size: 11px;
+                color: #7F8C8D;
+                border-top: 1px solid #ddd;
+                padding-top: 15px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>EXPENSE REIMBURSEMENT FORM</h2>
+            
+            <div class="detail-section">
+                <div class="detail-row">
+                    <div class="detail-label">Employee Name:</div>
+                    <div class="detail-value">${formData.employee_name || "N/A"}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">EMP ID:</div>
+                    <div class="detail-value">${formData.emp_id || "N/A"}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Manager Name:</div>
+                    <div class="detail-value">${formData.manager_name || "N/A"}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Department:</div>
+                    <div class="detail-value">${formData.department || "N/A"}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Expense Period:</div>
+                    <div class="detail-value">From ${formData.from_date || "N/A"} To ${formData.to_date || "N/A"}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Business Purpose / Project:</div>
+                    <div class="detail-value">${formData.business_purpose || "N/A"}</div>
+                </div>
+            </div>
+
+            <h3>Itemized Expenses</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Cost (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${expenses.map(exp => `
+                        <tr>
+                            <td>${exp.date || "N/A"}</td>
+                            <td>${exp.description || "N/A"}</td>
+                            <td>${exp.category || "N/A"}</td>
+                            <td>₹${Number(exp.cost || 0).toLocaleString('en-IN')}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+
+            <div class="calculation-box">
+                <div class="calculation-row">
+                    <span>Subtotal:</span>
+                    <span>₹${subtotal.toLocaleString('en-IN')}</span>
+                </div>
+                <div class="calculation-row">
+                    <span>Less Cash Advance:</span>
+                    <span>-₹${cashAdvance.toLocaleString('en-IN')}</span>
+                </div>
+                <div class="calculation-row total-row">
+                    <span>Total:</span>
+                    <span>₹${total.toLocaleString('en-IN')}</span>
+                </div>
+            </div>
+
+            ${formData.receipts && formData.receipts.length > 0 ? `
+                <div class="note">
+                    <strong>Receipts Attached:</strong> ${formData.receipts.length} file(s)
+                    <ul style="margin: 10px 0 0 20px;">
+                        ${formData.receipts.map(r => `<li>${r.filename || 'Receipt'}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : `
+                <div class="note">
+                    <strong>Important:</strong> Don't Forget to Attach Receipts
+                </div>
+            `}
+
+            <div class="signature-section">
+                <div class="signature-box">
+                    <strong>Employee Signature:</strong>
+                    ${formData.employee_signature && formData.employee_signature.startsWith('data:image/') ? `
+                        <img src="${formData.employee_signature}" class="signature-image" alt="Employee Signature" />
+                    ` : `
+                        <div style="border-bottom: 2px solid #333; margin: 30px 0 10px 0;"></div>
+                    `}
+                    <div style="margin-top: 10px;">
+                        <strong>Date:</strong> ${formData.employee_date || "___________"}
+                    </div>
+                </div>
+                
+                <div class="signature-box">
+                    <strong>Approval Signature:</strong>
+                    ${formData.approval_signature && formData.approval_signature.startsWith('data:image/') ? `
+                        <img src="${formData.approval_signature}" class="signature-image" alt="Approval Signature" />
+                    ` : `
+                        <div style="border-bottom: 2px solid #333; margin: 30px 0 10px 0;"></div>
+                    `}
+                    <div style="margin-top: 10px;">
+                        <strong>Date:</strong> ${formData.approval_date || "___________"}
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                This notification was sent automatically from SecureKloud Intranet<br/>
+                For queries, please contact the Finance Department
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+}
     // 5) PIP Letter
     else if (type === "PIP Letter") {
       html = `
@@ -217,14 +617,81 @@ function normalizeKeys(obj) {
     }
 
     // 6) Intern to Onroll
-    else if (type === "Intern to Onroll") {
-      html = `
-        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: auto;">
-          <h2 style="text-align:center; color:#8E44AD;">Intern to Onroll Conversion</h2>
-          ${buildHtmlTable(formData)}
-        </div>
-      `;
-    }
+   // Intern -> Onroll (supports several type names and both nested / flat fields)
+else if (
+  type === "Intern to Onroll" ||
+  type === "Intern to Onroll Movement" ||
+  type === "Intern to Onroll Movement Template"
+) {
+  // normalize keys and fallbacks (frontend may send slightly different names)
+  const project = formData.project || formData.projectTitle || formData.project_title || "";
+  const internId = formData.internId || formData.intern_id || "";
+  const internName = formData.internName || formData.intern_name || "";
+  const joiningDate = formData.joiningDate || formData.joining_date || "";
+  const completionDate = formData.completionDate || formData.completion_date || "";
+  const department = formData.department || "";
+  const reportingManager = formData.reportingManager || formData.reporting_manager || "";
+  const departmentHead = formData.departmentHead || formData.department_head || "";
+  const onrollDate = formData.onrollDate || formData.onroll_date || "";
+
+  // ratings: accept either formData.ratings = { learnability:.. } or flat fields
+  const ratings = formData.ratings || {};
+  const learnability = formData.learnability || ratings.learnability || "";
+  const technical = formData.technical || formData.technicalCompetence || ratings.technical || "";
+  const responsibility = formData.responsibility || ratings.responsibility || "";
+  const attendance = formData.attendance || ratings.attendance || "";
+  const teamwork = formData.teamwork || ratings.teamwork || "";
+  const attitude = formData.attitude || ratings.attitude || "";
+
+  const recommendation = formData.recommendation || "";
+  const justification = formData.justification || formData.justificationForConversion || "";
+
+  // signature field (frontend sets formData.signature to data:image/... base64)
+  const signature = formData.signature || formData.associateSignature || formData.associate_signature || "";
+
+  html = `
+    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: auto; line-height:1.5;">
+      <h2 style="text-align:center; color:#2E86C1;">INTERN TO ONROLL MOVEMENT</h2>
+
+      <p><b>Intern ID:</b> ${internId}</p>
+      <p><b>Intern Name:</b> ${internName}</p>
+      <p><b>Date of Joining (As Intern):</b> ${joiningDate}</p>
+      <p><b>Date of Completion (As Intern):</b> ${completionDate}</p>
+      <p><b>Internship Title / Project:</b> ${project}</p>
+      <p><b>Department:</b> ${department}</p>
+      <p><b>Reporting Manager:</b> ${reportingManager}</p>
+      <p><b>Department Head:</b> ${departmentHead}</p>
+      <p><b>Intern to Onroll Date:</b> ${onrollDate}</p>
+
+      <h3>Areas of Assessment (1-5)</h3>
+      <ul>
+        <li>Learnability: ${learnability}</li>
+        <li>Technical Competence: ${technical}</li>
+        <li>Responsibility / Accountability: ${responsibility}</li>
+        <li>Attendance: ${attendance}</li>
+        <li>Teamwork: ${teamwork}</li>
+        <li>Attitude: ${attitude}</li>
+      </ul>
+
+      <h3>Recommendation</h3>
+      <p>${recommendation}</p>
+      <h4>Justification</h4>
+      <p>${justification}</p>
+
+      <br/>
+
+      <b>Signature:</b><br/>
+      ${
+        signature && String(signature).startsWith("data:image/")
+          ? `<img src="${signature}" style="width:220px; border:1px solid #ccc; margin-top:10px;" />`
+          : `<div style="width:220px; border-bottom:2px solid #333; margin-top:30px;"></div>`
+      }
+
+      <p style="font-size:12px; color:#777; margin-top:20px;">This notification was sent automatically from SecureKloud Intranet.</p>
+    </div>
+  `;
+}
+
     else if (type === "Expense Reimbursement Form") {
   html = `
     <div style="font-family: Arial, sans-serif; max-width: 900px; margin: auto; line-height:1.6;">
@@ -450,7 +917,15 @@ else if (type === "Intern to Onroll Movement Template") {
       <br/>
       <p><b>Date:</b> ${formData.date || "________"}<br/>
       <b>Place:</b> ${formData.place || "________"}<br/>
-      <b>Employee Name & Signature:</b> ${formData.employeeName || "________"}</p>
+ <p><b>Employee Name:</b> ${formData.employeeName || "________"}</p>
+
+<p><b>Signature:</b></p>
+${
+  formData.signature && String(formData.signature).startsWith("data:image/")
+    ? `<img src="${formData.signature}" style="width:180px;height:auto;border:1px solid #ccc;" />`
+    : `<div style="width:180px;border-bottom:2px solid #000;margin-top:20px;"></div>`
+}
+
 
       ${
         formData.signature && formData.signature.startsWith("data:image/")
@@ -680,11 +1155,44 @@ else if (type === "Exit Interview Survey") {
 }
 else if (type === "Star of the Quarter") {
   const normalizedFormData = normalizeKeys(formData);
-  // Fix naming differences between frontend and backend
-normalizedFormData.nominated_by = formData.nominatedBy || "";
-normalizedFormData.nominated_by_designation = formData.nominatedByDesignation || "";
-normalizedFormData.routed_by = formData.routedBy || "";
-normalizedFormData.routed_by_designation = formData.routedByDesignation || "";
+  
+  // ✅ Add fallbacks for all possible field names
+  normalizedFormData.associate_name = formData.associate_name || formData.associateName || "";
+  normalizedFormData.doj = formData.doj || formData.date_of_joining || "";
+  normalizedFormData.designation = formData.designation || "";
+  normalizedFormData.project = formData.project || formData.project_dept || "";
+  normalizedFormData.role_since = formData.role_since || "";
+  normalizedFormData.nomination_period = formData.nomination_period || "";
+  
+  // ✅ Handle accomplishments from both nested and flattened formats
+  normalizedFormData.a_performance = formData.a_performance || 
+    formData.accomplishments?.exceptional_performance || "";
+  normalizedFormData.a_compliance = formData.a_compliance || 
+    formData.accomplishments?.process_compliance || "";
+  normalizedFormData.a_initiatives = formData.a_initiatives || 
+    formData.accomplishments?.initiatives || "";
+  normalizedFormData.a_learning = formData.a_learning || 
+    formData.accomplishments?.learning || "";
+  normalizedFormData.a_sharing = formData.a_sharing || 
+    formData.accomplishments?.knowledge_sharing || "";
+  normalizedFormData.a_policies = formData.a_policies || 
+    formData.accomplishments?.policy_adherence || "";
+  normalizedFormData.a_client_appreciation = formData.a_client_appreciation || 
+    formData.accomplishments?.client_appreciation || "";
+  normalizedFormData.a_potential = formData.a_potential || 
+    formData.accomplishments?.potential || "";
+  normalizedFormData.a_participation = formData.a_participation || 
+    formData.accomplishments?.participation || "";
+  normalizedFormData.a_others = formData.a_others || 
+    formData.accomplishments?.others || "";
+  
+  // ✅ Handle nominator details
+  normalizedFormData.nominated_by = formData.nominated_by || formData.nominatedBy || "";
+  normalizedFormData.nominated_by_designation = formData.nominated_by_designation || 
+    formData.nominatedByDesignation || "";
+  normalizedFormData.routed_by = formData.routed_by || formData.routedBy || "";
+  normalizedFormData.routed_by_designation = formData.routed_by_designation || 
+    formData.routedByDesignation || "";
 
   html = `
   <!DOCTYPE html>
@@ -737,18 +1245,6 @@ normalizedFormData.routed_by_designation = formData.routedByDesignation || "";
           .accomplishment-col {
               width: 60%;
           }
-          .signature-table td {
-              border: none;
-              padding: 8px;
-          }
-          .signature-label {
-              width: 15%;
-              font-weight: bold;
-              color: #555;
-          }
-          .signature-input {
-              width: 35%;
-          }
       </style>
   </head>
   <body>
@@ -764,16 +1260,16 @@ normalizedFormData.routed_by_designation = formData.routedByDesignation || "";
       <h3>ASSOCIATE DETAILS</h3>
       <table>
           <tr>
-              <th>Associate Name</th><td>${normalizedFormData.associate_name || ""}</td>
-              <th>Date of Joining</th><td>${normalizedFormData.doj || normalizedFormData.date_of_joining || ""}</td>
+              <th>Associate Name</th><td>${normalizedFormData.associate_name}</td>
+              <th>Date of Joining</th><td>${normalizedFormData.doj}</td>
           </tr>
           <tr>
-              <th>Designation</th><td>${normalizedFormData.designation || ""}</td>
-              <th>Project / Dept</th><td>${normalizedFormData.project || normalizedFormData.project_dept || ""}</td>
+              <th>Designation</th><td>${normalizedFormData.designation}</td>
+              <th>Project / Dept</th><td>${normalizedFormData.project}</td>
           </tr>
           <tr>
-              <th>In this Role Since</th><td>${normalizedFormData.role_since || normalizedFormData.roleSince || ""}</td>
-              <th>Nomination Period</th><td>${normalizedFormData.nomination_period || normalizedFormData.nominationPeriod || ""}</td>
+              <th>In this Role Since</th><td>${normalizedFormData.role_since}</td>
+              <th>Nomination Period</th><td>${normalizedFormData.nomination_period}</td>
           </tr>
       </table>
 
@@ -787,35 +1283,30 @@ normalizedFormData.routed_by_designation = formData.routedByDesignation || "";
               </tr>
           </thead>
           <tbody>
-              <tr><td>01</td><td>Consistently Exceptional Performance</td><td>${normalizedFormData.accomplishments?.exceptional_performance || normalizedFormData.a_performance || ""}</td></tr>
-              <tr><td>02</td><td>Process Compliance / Quality of Work Deliverable</td><td>${normalizedFormData.accomplishments?.process_compliance || normalizedFormData.a_compliance || ""}</td></tr>
-              <tr><td>03</td><td>Initiatives Rolled out</td><td>${normalizedFormData.accomplishments?.initiatives || normalizedFormData.a_initiatives || ""}</td></tr>
-              <tr><td>04</td><td>Learning</td><td>${normalizedFormData.accomplishments?.learning || normalizedFormData.a_learning || ""}</td></tr>
-              <tr><td>05</td><td>Knowledge Sharing / Training Imparted</td><td>${normalizedFormData.accomplishments?.knowledge_sharing || normalizedFormData.a_sharing || ""}</td></tr>
-              <tr><td>06</td><td>Awareness and Adherence to Policies</td><td>${normalizedFormData.accomplishments?.policy_adherence || normalizedFormData.a_policies || ""}</td></tr>
-              <tr><td>07</td><td>Client Appreciation, if any</td><td>${normalizedFormData.accomplishments?.client_appreciation || normalizedFormData.a_client_appreciation || ""}</td></tr>
-              <tr><td>08</td><td>Potential Shown for the next role, if any</td><td>${normalizedFormData.accomplishments?.potential || normalizedFormData.a_potential || ""}</td></tr>
-              <tr><td>09</td><td>Participation in Team / Organizational activities</td><td>${normalizedFormData.accomplishments?.participation || normalizedFormData.a_participation || ""}</td></tr>
-              <tr><td>10</td><td>Others, if any</td><td>${normalizedFormData.accomplishments?.others || normalizedFormData.a_others || ""}</td></tr>
+              <tr><td>01</td><td>Consistently Exceptional Performance</td><td>${normalizedFormData.a_performance}</td></tr>
+              <tr><td>02</td><td>Process Compliance / Quality of Work Deliverable</td><td>${normalizedFormData.a_compliance}</td></tr>
+              <tr><td>03</td><td>Initiatives Rolled out</td><td>${normalizedFormData.a_initiatives}</td></tr>
+              <tr><td>04</td><td>Learning</td><td>${normalizedFormData.a_learning}</td></tr>
+              <tr><td>05</td><td>Knowledge Sharing / Training Imparted</td><td>${normalizedFormData.a_sharing}</td></tr>
+              <tr><td>06</td><td>Awareness and Adherence to Policies</td><td>${normalizedFormData.a_policies}</td></tr>
+              <tr><td>07</td><td>Client Appreciation, if any</td><td>${normalizedFormData.a_client_appreciation}</td></tr>
+              <tr><td>08</td><td>Potential Shown for the next role, if any</td><td>${normalizedFormData.a_potential}</td></tr>
+              <tr><td>09</td><td>Participation in Team / Organizational activities</td><td>${normalizedFormData.a_participation}</td></tr>
+              <tr><td>10</td><td>Others, if any</td><td>${normalizedFormData.a_others}</td></tr>
           </tbody>
       </table>
-<h3>NOMINATOR DETAILS</h3>
-<table class="signature-table">
-  <tr>
-    <td class="signature-label">Nominated By</td>
-    <td class="signature-input">${normalizedFormData.nominated_by || ""}</td>
-    <td class="signature-label">Designation</td>
-    <td class="signature-input">${normalizedFormData.nominated_by_designation || ""}</td>
-  </tr>
-  <tr>
-    <td class="signature-label">Routed By</td>
-    <td class="signature-input">${normalizedFormData.routed_by || ""}</td>
-    <td class="signature-label">Designation</td>
-    <td class="signature-input">${normalizedFormData.routed_by_designation || ""}</td>
-  </tr>
-</table>
 
-      
+      <h3>NOMINATOR DETAILS</h3>
+      <table>
+          <tr>
+              <th>Nominated By</th><td>${normalizedFormData.nominated_by}</td>
+              <th>Designation</th><td>${normalizedFormData.nominated_by_designation}</td>
+          </tr>
+          <tr>
+              <th>Routed By</th><td>${normalizedFormData.routed_by}</td>
+              <th>Designation</th><td>${normalizedFormData.routed_by_designation}</td>
+          </tr>
+      </table>
 
   </body>
   </html>
@@ -1075,7 +1566,38 @@ else if (type === "Associate of the Year") {
   </html>`;
 }
 else if (type === "Team of the Year") {
-  const normalizedFormData = normalizeKeys(formData);
+  // ✅ Log what we received
+  console.log("📥 Received Team of Year Data:", JSON.stringify(formData, null, 2));
+
+  // ✅ Direct mapping - no normalization needed since frontend sends snake_case
+  const data = {
+    project_name: formData.project_name || "",
+    date_commencement: formData.date_commencement || "",
+    number_of_members: formData.number_of_members || "",
+    nomination_period: formData.nomination_period || "",
+    names_of_members: formData.names_of_members || "",
+    previous_nomination_details: formData.previous_nomination_details || "",
+    
+    a_deliverable: formData.a_deliverable || "",
+    a_utilization: formData.a_utilization || "",
+    a_productivity: formData.a_productivity || "",
+    a_knowledge: formData.a_knowledge || "",
+    a_risk: formData.a_risk || "",
+    a_customer_sat: formData.a_customer_sat || "",
+    a_team_bonding: formData.a_team_bonding || "",
+    a_compliance: formData.a_compliance || "",
+    a_impact: formData.a_impact || "",
+    a_cost_effective: formData.a_cost_effective || "",
+    a_contribution: formData.a_contribution || "",
+    a_others: formData.a_others || "",
+    
+    nominated_by: formData.nominated_by || "",
+    nominator_designation: formData.nominator_designation || "",
+    routed_by: formData.routed_by || "",
+    router_designation: formData.router_designation || "",
+  };
+
+  console.log("✅ Processed Data for Template:", JSON.stringify(data, null, 2));
 
   html = `
   <!DOCTYPE html>
@@ -1112,11 +1634,11 @@ else if (type === "Team of the Year") {
               border: 1px solid #ddd;
               padding: 10px;
               text-align: left;
-              vertical-align: middle;
+              vertical-align: top;
           }
-          th { background-color: #e8eaf6; font-weight: bold; color: #333; }
-          .criteria-col { width: 30%; font-weight: bold; background-color: #f7f7ff; }
-          .accomplishment-col { width: 60%; }
+          th { background-color: #e8eaf6; font-weight: bold; color: #333; width: 25%; }
+          .criteria-col { width: 35%; font-weight: bold; background-color: #f7f7ff; }
+          .accomplishment-col { width: 55%; }
           .version-table { float: right; margin-top: -60px; font-size: 0.85em; }
           .version-table th { background-color: #e8eaf6; padding: 5px 10px; }
       </style>
@@ -1137,50 +1659,177 @@ else if (type === "Team of the Year") {
 
       <h3>TEAM DETAILS</h3>
       <table>
-          <tr><th>Name of the Project</th><td>${normalizedFormData.project_name || ""}</td>
-              <th>Date of Commencement</th><td>${normalizedFormData.date_commencement || ""}</td></tr>
-          <tr><th>Number of Members</th><td>${normalizedFormData.number_of_members || ""}</td>
-              <th>Nomination Period</th><td>${normalizedFormData.nomination_period || ""}</td></tr>
-          <tr><th>Names of Members</th><td colspan="3">${normalizedFormData.names_of_members || ""}</td></tr>
-          <tr><th>Previous Nomination Details</th><td colspan="3">${normalizedFormData.previous_nomination_details || ""}</td></tr>
+          <tr>
+              <th>Name of the Project</th>
+              <td>${data.project_name}</td>
+              <th>Date of Commencement</th>
+              <td>${data.date_commencement}</td>
+          </tr>
+          <tr>
+              <th>Number of Members</th>
+              <td>${data.number_of_members}</td>
+              <th>Nomination Period</th>
+              <td>${data.nomination_period}</td>
+          </tr>
+          <tr>
+              <th>Names of Members</th>
+              <td colspan="3">${data.names_of_members}</td>
+          </tr>
+          <tr>
+              <th>Previous Nomination Details</th>
+              <td colspan="3">${data.previous_nomination_details}</td>
+          </tr>
       </table>
 
       <h3>ACCOMPLISHMENTS AGAINST CRITERIA</h3>
       <table>
-          <tr><th>01</th><td class="criteria-col">Consistently Exceptional Deliverable</td><td>${normalizedFormData.a_deliverable || ""}</td></tr>
-          <tr><th>02</th><td class="criteria-col">Utilization of Resources</td><td>${normalizedFormData.a_utilization || ""}</td></tr>
-          <tr><th>03</th><td class="criteria-col">Productivity of Resources</td><td>${normalizedFormData.a_productivity || ""}</td></tr>
-          <tr><th>04</th><td class="criteria-col">Knowledge within the team</td><td>${normalizedFormData.a_knowledge || ""}</td></tr>
-          <tr><th>05</th><td class="criteria-col">Risk Management</td><td>${normalizedFormData.a_risk || ""}</td></tr>
-          <tr><th>06</th><td class="criteria-col">Customer Satisfaction Report / Feedback</td><td>${normalizedFormData.a_customer_sat || ""}</td></tr>
-          <tr><th>07</th><td class="criteria-col">Team Bonding / Motivation</td><td>${normalizedFormData.a_team_bonding || ""}</td></tr>
-          <tr><th>08</th><td class="criteria-col">Process Compliance / Quality of Work</td><td>${normalizedFormData.a_compliance || ""}</td></tr>
-          <tr><th>09</th><td class="criteria-col">Impact on Project / Business / Customer</td><td>${normalizedFormData.a_impact || ""}</td></tr>
-          <tr><th>10</th><td class="criteria-col">Cost Effective Initiatives</td><td>${normalizedFormData.a_cost_effective || ""}</td></tr>
-          <tr><th>11</th><td class="criteria-col">Contribution to Organizational Targets</td><td>${normalizedFormData.a_contribution || ""}</td></tr>
-          <tr><th>12</th><td class="criteria-col">Others, if any</td><td>${normalizedFormData.a_others || ""}</td></tr>
+          <thead>
+              <tr>
+                  <th style="width:5%;">Sl. No.</th>
+                  <th class="criteria-col">CRITERIA</th>
+                  <th class="accomplishment-col">ACCOMPLISHMENT</th>
+              </tr>
+          </thead>
+          <tbody>
+              <tr><td>01</td><td>Consistently Exceptional Deliverable</td><td>${data.a_deliverable}</td></tr>
+              <tr><td>02</td><td>Utilization of Resources</td><td>${data.a_utilization}</td></tr>
+              <tr><td>03</td><td>Productivity of Resources</td><td>${data.a_productivity}</td></tr>
+              <tr><td>04</td><td>Knowledge within the team</td><td>${data.a_knowledge}</td></tr>
+              <tr><td>05</td><td>Risk Management</td><td>${data.a_risk}</td></tr>
+              <tr><td>06</td><td>Customer Satisfaction Report / Feedback</td><td>${data.a_customer_sat}</td></tr>
+              <tr><td>07</td><td>Team Bonding / Motivation</td><td>${data.a_team_bonding}</td></tr>
+              <tr><td>08</td><td>Process Compliance / Quality of Work</td><td>${data.a_compliance}</td></tr>
+              <tr><td>09</td><td>Impact on Project / Business / Customer</td><td>${data.a_impact}</td></tr>
+              <tr><td>10</td><td>Cost Effective Initiatives</td><td>${data.a_cost_effective}</td></tr>
+              <tr><td>11</td><td>Contribution to Organizational Targets</td><td>${data.a_contribution}</td></tr>
+              <tr><td>12</td><td>Others, if any</td><td>${data.a_others}</td></tr>
+          </tbody>
       </table>
 
       <h3>NOMINATOR AND ROUTING DETAILS</h3>
       <table>
-          <tr><th>Nominated By</th><td>${normalizedFormData.nominated_by || ""}</td>
-              <th>Designation</th><td>${normalizedFormData.nominator_designation || ""}</td></tr>
-          <tr><th>Routed By</th><td>${normalizedFormData.routed_by || ""}</td>
-              <th>Designation</th><td>${normalizedFormData.router_designation || ""}</td></tr>
+          <tr>
+              <th>Nominated By</th>
+              <td>${data.nominated_by}</td>
+              <th>Designation</th>
+              <td>${data.nominator_designation}</td>
+          </tr>
+          <tr>
+              <th>Routed By</th>
+              <td>${data.routed_by}</td>
+              <th>Designation</th>
+              <td>${data.router_designation}</td>
+          </tr>
       </table>
   </body>
   </html>
   `;
 }
+else if (
+  type === "Letter of Undertaking Separation" ||
+  type === "Letter of Undertaking"
+) {
+  const signature =
+  formData.signature ||
+  formData.associateSignature ||
+  formData.employeeSignature ||
+  "";
+
+  html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        line-height: 1.7;
+        color: #000;
+      }
+      h2 {
+        text-align: center;
+        text-decoration: underline;
+      }
+      .signature {
+        margin-top: 40px;
+      }
+      .signature img {
+        width: 200px;
+        border-bottom: 1px solid #000;
+      }
+    </style>
+  </head>
+  <body>
+
+    <p><b>Date:</b> ${formData.date || "________"}</p>
+
+    <p>
+      SecureKloud Technologies Limited<br/>
+      5th Floor, Bascon Futura SV IT Park,<br/>
+      SV 10/1, Venkatnarayana Road,<br/>
+      T-Nagar, Chennai – 600017
+    </p>
+
+    <p><b>Sub:</b> Letter of Undertaking & Confirmation</p>
+
+    <p>
+      I, <b>${formData.associateName || "________"}</b>,
+      son/daughter/wife of <b>${formData.relativeName || "________"}</b>,
+      residing at <b>${formData.address || "________"}</b>,
+      employed with SecureKloud Technologies Limited, do hereby confirm as under:
+    </p>
+
+    <ol>
+      <li>
+        I was employed as <b>${formData.designation || "________"}</b>
+        with the Company since <b>${formData.joiningDate || "________"}</b>.
+      </li>
+      <li>
+        I have voluntarily resigned from the services of the Company
+        on <b>${formData.resignationDate || "________"}</b>.
+      </li>
+      <li>
+        I confirm that I shall not disclose any confidential information
+        obtained during my employment.
+      </li>
+      <li>
+        I undertake not to solicit employees/customers or compete with the
+        Company for a period of 24 months.
+      </li>
+      <li>
+        Any violation of this undertaking may result in legal action.
+      </li>
+    </ol>
+
+    ${
+      formData.isDirector
+        ? `<p><b>Director Clause:</b> I confirm that I have not acted against the interests of the Company.</p>`
+        : ""
+    }
+
+    <p>
+      This Letter of Undertaking shall be governed by the laws of India and
+      subject to the jurisdiction of Chennai courts.
+    </p>
+
+   <div class="signature">
+  <p><b>Signature of the Associate:</b></p>
+  ${
+    signature && signature.startsWith("data:image/")
+      ? `<img src="${signature}" style="width:200px;" />`
+      : `<div style="width:200px;border-bottom:1px solid #000;"></div>`
+  }
+  <p><b>Name:</b> ${formData.associateName || "________"}</p>
+  <p><b>Date:</b> ${formData.date || "________"}</p>
+  <p><b>Place:</b> ${formData.place || "Chennai"}</p>
+</div>
 
 
-
-
-
-
-
-
-
+  </body>
+  </html>
+  `;
+}
 
 
     // 7) Fallback for all others

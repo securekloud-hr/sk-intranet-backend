@@ -32,9 +32,11 @@ const pastEventsRoutes = require("./routes/pastEvents");
 const employeeDirectoryRoutes = require("./routes/employeeDirectoryRoutes");
 const policiesRoutes = require("./routes/policies");
 const adminRoutes = require("./routes/adminRoutes");
-const authRoutes = require("./routes/authRoutes");
+
 const questionsRoutes = require("./routes/questions");
-const aadAuthRoutes = require("./routes/aadAuthRoutes");
+
+
+
 const holidayRoutes = require("./routes/holidayRoutes");
 const internalJobsRoutes = require("./routes/internalJobs");
 const jobApplyRoutes = require("./routes/jobApplyRoutes");
@@ -355,9 +357,9 @@ app.use("/api/employee-directory", employeeDirectoryRoutes);
 app.use("/api/policies", policiesRoutes);
 app.use("/api/admin", adminRoutes);
 app.use(express.static("public"));
-app.use("/api/auth", authRoutes);
+
 app.use("/api/questions", questionsRoutes);
-app.use("/api/aad", aadAuthRoutes);
+
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/internal-jobs", internalJobsRoutes);
 app.use("/api/jobs", jobApplyRoutes);
