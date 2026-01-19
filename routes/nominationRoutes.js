@@ -1312,7 +1312,11 @@ else if (type === "Star of the Quarter") {
   </html>
   `;
 }
-else if (type === "Team of the Quarter") {
+else if (
+  type === "Team of the Quarter" ||
+  type === "Nomination Form - Team of the Quarter"
+) {
+
   const normalizedFormData = normalizeKeys(formData);
 
   normalizedFormData.nominated_by = formData.nominatedBy || formData.nominated_by || "";
@@ -1566,165 +1570,178 @@ else if (type === "Associate of the Year") {
   </html>`;
 }
 else if (type === "Team of the Year") {
-  // ✅ Log what we received
-  console.log("📥 Received Team of Year Data:", JSON.stringify(formData, null, 2));
 
-  // ✅ Direct mapping - no normalization needed since frontend sends snake_case
+  // 🔹 STEP 1: Normalize frontend data
+  const fd = normalizeKeys(formData);
+
+  console.log("📥 Normalized Team of Year Data:", JSON.stringify(fd, null, 2));
+
+  // 🔹 STEP 2: SAFELY MAP ALL POSSIBLE FIELD NAMES
   const data = {
-    project_name: formData.project_name || "",
-    date_commencement: formData.date_commencement || "",
-    number_of_members: formData.number_of_members || "",
-    nomination_period: formData.nomination_period || "",
-    names_of_members: formData.names_of_members || "",
-    previous_nomination_details: formData.previous_nomination_details || "",
-    
-    a_deliverable: formData.a_deliverable || "",
-    a_utilization: formData.a_utilization || "",
-    a_productivity: formData.a_productivity || "",
-    a_knowledge: formData.a_knowledge || "",
-    a_risk: formData.a_risk || "",
-    a_customer_sat: formData.a_customer_sat || "",
-    a_team_bonding: formData.a_team_bonding || "",
-    a_compliance: formData.a_compliance || "",
-    a_impact: formData.a_impact || "",
-    a_cost_effective: formData.a_cost_effective || "",
-    a_contribution: formData.a_contribution || "",
-    a_others: formData.a_others || "",
-    
-    nominated_by: formData.nominated_by || "",
-    nominator_designation: formData.nominator_designation || "",
-    routed_by: formData.routed_by || "",
-    router_designation: formData.router_designation || "",
+    // ---- TEAM DETAILS ----
+    project_name:
+      fd.project ||
+      fd.name_of_project ||
+      "",
+
+    date_commencement:
+      fd.commencement_date ||
+      fd.date_of_commencement ||
+      "",
+
+    number_of_members:
+      fd.number_of_members || "",
+
+    nomination_period:
+      fd.nomination_period || "",
+
+    names_of_members:
+      fd.member_names ||
+      fd.names_of_members ||
+      "",
+
+    previous_nomination_details:
+      fd.previous_nomination_details ||
+      fd.previous_nominations ||
+      "",
+
+    // ---- ACCOMPLISHMENTS ----
+    a_deliverable:
+      fd.accomplishments?.consistently_exceptional_deliverable ||
+      fd.accomplishments?.exceptional_deliverable ||
+      "",
+
+    a_utilization:
+      fd.accomplishments?.utilization_of_resources ||
+      fd.accomplishments?.resource_utilization ||
+      "",
+
+    a_productivity:
+      fd.accomplishments?.productivity_of_resources ||
+      fd.accomplishments?.resource_productivity ||
+      "",
+
+    a_knowledge:
+      fd.accomplishments?.knowledge_within_team ||
+      fd.accomplishments?.team_knowledge ||
+      "",
+
+    a_risk:
+      fd.accomplishments?.risk_management ||
+      "",
+
+    a_customer_sat:
+      fd.accomplishments?.customer_satisfaction ||
+      fd.accomplishments?.customer_feedback ||
+      "",
+
+    a_team_bonding:
+      fd.accomplishments?.team_bonding ||
+      "",
+
+    a_compliance:
+      fd.accomplishments?.process_compliance ||
+      "",
+
+    a_impact:
+      fd.accomplishments?.impact_on_project ||
+      fd.accomplishments?.impact ||
+      "",
+
+    a_cost_effective:
+      fd.accomplishments?.cost_effective_initiatives ||
+      fd.accomplishments?.cost_effective ||
+      "",
+
+    a_contribution:
+      fd.accomplishments?.contribution_to_targets ||
+      fd.accomplishments?.contribution ||
+      "",
+
+    a_others:
+      fd.accomplishments?.others ||
+      "",
+
+    // ---- NOMINATOR DETAILS ----
+    nominated_by:
+      fd.nominated_by ||
+      "",
+
+    nominator_designation:
+      fd.nominated_by_designation ||
+      "",
+
+    routed_by:
+      fd.routed_by ||
+      "",
+
+    router_designation:
+      fd.routed_by_designation ||
+      "",
   };
 
-  console.log("✅ Processed Data for Template:", JSON.stringify(data, null, 2));
+  console.log("✅ Final Data for Template:", JSON.stringify(data, null, 2));
 
+  // 🔹 STEP 3: HTML TEMPLATE (UNCHANGED STRUCTURE)
   html = `
   <!DOCTYPE html>
   <html lang="en">
   <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>SECUREKLOUD - Team of the Year Nomination Form</title>
-      <style>
-          body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
-          .header-box {
-              background-color: #e3f2fd;
-              border: 1px solid #bbdefb;
-              padding: 15px;
-              margin-bottom: 20px;
-              text-align: center;
-          }
-          h2 { color: #1a237e; margin: 5px 0; }
-          h3 {
-              color: #333;
-              border-bottom: 2px solid #a8a8a8;
-              padding-bottom: 8px;
-              margin-top: 30px;
-              margin-bottom: 15px;
-          }
-          table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 20px;
-              background-color: #fff;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-          }
-          th, td {
-              border: 1px solid #ddd;
-              padding: 10px;
-              text-align: left;
-              vertical-align: top;
-          }
-          th { background-color: #e8eaf6; font-weight: bold; color: #333; width: 25%; }
-          .criteria-col { width: 35%; font-weight: bold; background-color: #f7f7ff; }
-          .accomplishment-col { width: 55%; }
-          .version-table { float: right; margin-top: -60px; font-size: 0.85em; }
-          .version-table th { background-color: #e8eaf6; padding: 5px 10px; }
-      </style>
+    <meta charset="UTF-8">
+    <title>SECUREKLOUD - Team of the Year</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; background:#f4f4f4; }
+      h2 { text-align:center; color:#1a237e; }
+      h3 { border-bottom:2px solid #aaa; padding-bottom:6px; }
+      table { width:100%; border-collapse:collapse; background:#fff; margin-bottom:20px; }
+      th, td { border:1px solid #ccc; padding:8px; }
+      th { background:#e8eaf6; width:25%; }
+    </style>
   </head>
   <body>
-      <div class="header-box">
-          <img src="http://localhost:8081/SecureKloud_Logo.jpg" 
-               alt="SecureKloud Logo" 
-               style="width:150px; margin-bottom:10px;">
-          <h2>SECUREKLOUD</h2>
-          <h2>NOMINATION FORM - TEAM OF THE YEAR</h2>
-      </div>
 
-      <table class="version-table">
-          <tr><th>Version No</th><th>Version Date</th></tr>
-          <tr><td>1.0</td><td>14-Jan-21</td></tr>
-      </table>
+    <h2>SECUREKLOUD</h2>
+    <h2>NOMINATION FORM – TEAM OF THE YEAR</h2>
 
-      <h3>TEAM DETAILS</h3>
-      <table>
-          <tr>
-              <th>Name of the Project</th>
-              <td>${data.project_name}</td>
-              <th>Date of Commencement</th>
-              <td>${data.date_commencement}</td>
-          </tr>
-          <tr>
-              <th>Number of Members</th>
-              <td>${data.number_of_members}</td>
-              <th>Nomination Period</th>
-              <td>${data.nomination_period}</td>
-          </tr>
-          <tr>
-              <th>Names of Members</th>
-              <td colspan="3">${data.names_of_members}</td>
-          </tr>
-          <tr>
-              <th>Previous Nomination Details</th>
-              <td colspan="3">${data.previous_nomination_details}</td>
-          </tr>
-      </table>
+    <h3>TEAM DETAILS</h3>
+    <table>
+      <tr><th>Project Name</th><td>${data.project_name}</td>
+          <th>Date of Commencement</th><td>${data.date_commencement}</td></tr>
+      <tr><th>Number of Members</th><td>${data.number_of_members}</td>
+          <th>Nomination Period</th><td>${data.nomination_period}</td></tr>
+      <tr><th>Names of Members</th><td colspan="3">${data.names_of_members}</td></tr>
+      <tr><th>Previous Nomination Details</th><td colspan="3">${data.previous_nomination_details}</td></tr>
+    </table>
 
-      <h3>ACCOMPLISHMENTS AGAINST CRITERIA</h3>
-      <table>
-          <thead>
-              <tr>
-                  <th style="width:5%;">Sl. No.</th>
-                  <th class="criteria-col">CRITERIA</th>
-                  <th class="accomplishment-col">ACCOMPLISHMENT</th>
-              </tr>
-          </thead>
-          <tbody>
-              <tr><td>01</td><td>Consistently Exceptional Deliverable</td><td>${data.a_deliverable}</td></tr>
-              <tr><td>02</td><td>Utilization of Resources</td><td>${data.a_utilization}</td></tr>
-              <tr><td>03</td><td>Productivity of Resources</td><td>${data.a_productivity}</td></tr>
-              <tr><td>04</td><td>Knowledge within the team</td><td>${data.a_knowledge}</td></tr>
-              <tr><td>05</td><td>Risk Management</td><td>${data.a_risk}</td></tr>
-              <tr><td>06</td><td>Customer Satisfaction Report / Feedback</td><td>${data.a_customer_sat}</td></tr>
-              <tr><td>07</td><td>Team Bonding / Motivation</td><td>${data.a_team_bonding}</td></tr>
-              <tr><td>08</td><td>Process Compliance / Quality of Work</td><td>${data.a_compliance}</td></tr>
-              <tr><td>09</td><td>Impact on Project / Business / Customer</td><td>${data.a_impact}</td></tr>
-              <tr><td>10</td><td>Cost Effective Initiatives</td><td>${data.a_cost_effective}</td></tr>
-              <tr><td>11</td><td>Contribution to Organizational Targets</td><td>${data.a_contribution}</td></tr>
-              <tr><td>12</td><td>Others, if any</td><td>${data.a_others}</td></tr>
-          </tbody>
-      </table>
+    <h3>ACCOMPLISHMENTS</h3>
+    <table>
+      <tr><th>Exceptional Deliverable</th><td>${data.a_deliverable}</td></tr>
+      <tr><th>Utilization of Resources</th><td>${data.a_utilization}</td></tr>
+      <tr><th>Productivity</th><td>${data.a_productivity}</td></tr>
+      <tr><th>Knowledge</th><td>${data.a_knowledge}</td></tr>
+      <tr><th>Risk Management</th><td>${data.a_risk}</td></tr>
+      <tr><th>Customer Feedback</th><td>${data.a_customer_sat}</td></tr>
+      <tr><th>Team Bonding</th><td>${data.a_team_bonding}</td></tr>
+      <tr><th>Process Compliance</th><td>${data.a_compliance}</td></tr>
+      <tr><th>Impact</th><td>${data.a_impact}</td></tr>
+      <tr><th>Cost Effective</th><td>${data.a_cost_effective}</td></tr>
+      <tr><th>Contribution</th><td>${data.a_contribution}</td></tr>
+      <tr><th>Others</th><td>${data.a_others}</td></tr>
+    </table>
 
-      <h3>NOMINATOR AND ROUTING DETAILS</h3>
-      <table>
-          <tr>
-              <th>Nominated By</th>
-              <td>${data.nominated_by}</td>
-              <th>Designation</th>
-              <td>${data.nominator_designation}</td>
-          </tr>
-          <tr>
-              <th>Routed By</th>
-              <td>${data.routed_by}</td>
-              <th>Designation</th>
-              <td>${data.router_designation}</td>
-          </tr>
-      </table>
+    <h3>NOMINATOR DETAILS</h3>
+    <table>
+      <tr><th>Nominated By</th><td>${data.nominated_by}</td>
+          <th>Designation</th><td>${data.nominator_designation}</td></tr>
+      <tr><th>Routed By</th><td>${data.routed_by}</td>
+          <th>Designation</th><td>${data.router_designation}</td></tr>
+    </table>
+
   </body>
   </html>
   `;
 }
+
 else if (
   type === "Letter of Undertaking Separation" ||
   type === "Letter of Undertaking"
