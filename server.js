@@ -43,6 +43,8 @@ const jobApplyRoutes = require("./routes/jobApplyRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const birthdayRoutes = require("./routes/birthdayRoutes");
 const queryRoutes = require("./routes/queryRoutes");
+const salesRoutes = require("./routes/salesRoutes");
+
 
 
 const app = express();
@@ -367,6 +369,8 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/learning", learningRoutes);
 app.use("/api/birthdays", birthdayRoutes);
 app.use("/api/queries", queryRoutes);
+app.use("/api/sales", salesRoutes);
+
 app.use(
   "/emp-images",
   express.static(
