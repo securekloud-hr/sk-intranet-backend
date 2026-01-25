@@ -2,38 +2,44 @@ const express = require("express");
 const router = express.Router();
 const Sales = require("../models/Sales");
 
-/* ================= SAVE SALES ================= */
+/* ================= CREATE OR UPDATE SALES ================= */
 router.post("/", async (req, res) => {
   try {
-    const {
-      empId,
-      employeeName,
-      date,
-    } = req.body;
+    const { empId, date } = req.body;
 
-    if (!empId || !employeeName || !date) {
-      return res.status(400).json({
-        success: false,
-        message: "EmpID, EmployeeName and Date are required",
-      });
+    if (!empId || !date) {
+      return res.status(400).json({ message: "empId and date required" });
     }
 
-    const sales = new Sales(req.body);
-    await sales.save();
+    // 🔴 Normalize date (strip time)
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
 
-    res.status(201).json({
+    const sales = await Sales.findOneAndUpdate(
+      { empId, date: normalizedDate }, // match
+      {
+        ...req.body,
+        date: normalizedDate, // store normalized date
+      },
+      {
+        new: true,
+        upsert: true, // 🔥 create OR update
+        runValidators: true,
+      }
+    );
+
+    return res.json({
       success: true,
-      message: "Sales data saved successfully",
       data: sales,
     });
   } catch (err) {
-    console.error("Sales Save Error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("❌ Sales Save Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
 /* ================= GET SALES ================= */
-router.get("/", async (req, res) => {
+router.get("/", async (_req, res) => {
   try {
     const sales = await Sales.find().sort({ date: -1 });
     res.json(sales);

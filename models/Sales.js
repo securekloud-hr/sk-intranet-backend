@@ -2,21 +2,9 @@ const mongoose = require("mongoose");
 
 const SalesSchema = new mongoose.Schema(
   {
-    empId: {
-      type: String,
-      required: true,
-    },
-
-    employeeName: {
-      type: String,
-      required: true,
-    },
-
-    role: {
-      type: String,
-      enum: ["admin", "manager", "user", "isr"],
-      default: "isr",
-    },
+    empId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    role: { type: String },
 
     date: {
       type: Date,
@@ -27,7 +15,6 @@ const SalesSchema = new mongoose.Schema(
     netNewMeeting: { type: Number, default: 0 },
     followUpMeeting: { type: Number, default: 0 },
     qualifiedMeeting: { type: Number, default: 0 },
-
     meetingsDone: { type: Number, default: 0 },
 
     emailsOutgoing: { type: Number, default: 0 },
@@ -37,5 +24,8 @@ const SalesSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// 🔒 Prevent duplicates (empId + date)
+SalesSchema.index({ empId: 1, date: 1 }, { unique: true });
 
 module.exports = mongoose.model("Sales", SalesSchema);
