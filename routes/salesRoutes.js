@@ -48,4 +48,42 @@ router.get("/", async (_req, res) => {
   }
 });
 
+/* ================= TOP 5 PERFORMERS (ALL DATA) ================= */
+router.get("/top5", async (req, res) => {
+  try {
+    const top5 = await Sales.aggregate([
+      {
+        $group: {
+          _id: "$empId",
+          employeeName: { $first: "$employeeName" },
+
+          calls: { $sum: "$callsMade" },
+          emails: { $sum: "$emailsOutgoing" },
+          netNew: { $sum: "$netNewMeeting" },
+          followUp: { $sum: "$followUpMeeting" },
+          qualified: { $sum: "$qualifiedMeeting" },
+          proposals: { $sum: "$proposals" },
+          deals: { $sum: "$dealWon" }
+        }
+      },
+      {
+        $sort: {
+          deals: -1,
+          qualified: -1,
+          calls: -1
+        }
+      },
+      { $limit: 5 }
+    ]);
+
+    res.json({
+      success: true,
+      data: top5
+    });
+  } catch (err) {
+    console.error("❌ Top 5 Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

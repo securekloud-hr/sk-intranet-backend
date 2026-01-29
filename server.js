@@ -370,6 +370,8 @@ app.use("/api/learning", learningRoutes);
 app.use("/api/birthdays", birthdayRoutes);
 app.use("/api/queries", queryRoutes);
 app.use("/api/sales", salesRoutes);
+app.use("/api/target", require("./routes/target"));
+
 
 app.use(
   "/emp-images",
